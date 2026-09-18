@@ -32,8 +32,8 @@ function RolePicker() {
     setSelected(null); setChanged(false); setOpen(false);
     if (composer.scope.kind === 'thread') {
       Promise.all([rpc.call('current', { threadId: composer.scope.threadId }), rpc.call('roles', null)]).then(([current, list]) => {
-        if (alive && !touched.current) setSelected(list.roles.find(r => r.slug === current.roleSlug) ?? null);
-      }).catch(() => { if (alive) setError('Не удалось прочитать роль треда.'); });
+        if (alive && !touched.current) setSelected(list.roles.find(r => r.slug === current.roleSlug) ?? (current.roleSlug ? {id:'unavailable',slug:current.roleSlug,name:'Unavailable role',description:'Choose another role or re-enable its source.',instructions:'',color:'gray'} : null));
+      }).catch(() => { if (alive) setError('Could not read the thread role.'); });
     }
     return () => { alive = false; };
   }, [scopeKey, rpc]);
@@ -42,25 +42,25 @@ function RolePicker() {
     let alive = true;
     setLoading(true); setError('');
     rpc.call('roles', null).then(result => {
-      if (alive) { setRoles(result.roles); setSelected(previous => result.roles.find(r => r.slug === previous?.slug) ?? null); }
-    }).catch(() => { if (alive) setError('Не удалось загрузить роли. Проверьте, что Agent Roles включён.'); })
+      if (alive) { setRoles(result.roles); setSelected(previous => result.roles.find(r => r.slug === previous?.slug) ?? previous); }
+    }).catch(() => { if (alive) setError('Could not load roles. Try again.'); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [open, rpc]);
   return <div className="role-picker" ref={root}>
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild><Button type="button" variant="ghost" size="sm" aria-label={selected ? `Ролевой агент: ${selected.name}` : 'Выбрать ролевого агента'} className="role-picker-trigger" data-selected={Boolean(selected)}>
+      <Popover.Trigger asChild><Button type="button" variant="ghost" size="sm" aria-label={selected ? `Agent role: ${selected.name}` : 'Choose an agent role'} className="role-picker-trigger" data-selected={Boolean(selected)}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20v-1.5a6.5 6.5 0 0 1 13 0V20"/></svg>
         {selected && <span>{selected.name}</span>}
       </Button></Popover.Trigger>
-      <Popover.Portal><Popover.Content side="top" align="end" sideOffset={8} className="role-picker-menu" aria-label="Выбор агента">
-        <div className="role-picker-heading">Агент</div>
-        {loading ? <p role="status">Загрузка…</p> : error ? <p role="alert">{error}</p> : <div className="role-picker-list">
-          <button type="button" aria-pressed={!selected} onClick={() => { touched.current = true; setSelected(null); setChanged(true); setOpen(false); }}><span>Без роли</span>{!selected && <Check />}</button>
+      <Popover.Portal><Popover.Content side="top" align="end" sideOffset={8} className="role-picker-menu" aria-label="Choose an agent">
+        <div className="role-picker-heading">Agent</div>
+        {loading ? <p role="status">Loading…</p> : error ? <p role="alert">{error}</p> : <div className="role-picker-list">
+          <button type="button" aria-pressed={!selected} onClick={() => { touched.current = true; setSelected(null); setChanged(true); setOpen(false); }}><span>No role</span>{!selected && <Check />}</button>
           {roles.map(role => <button type="button" key={role.slug} title={role.description} aria-pressed={selected?.slug === role.slug} onClick={() => { touched.current = true; setSelected(role); setChanged(true); setOpen(false); }}><span>{role.name}</span>{selected?.slug === role.slug && <Check />}</button>)}
-          {!roles.length && <p>Создайте роль в Agent Roles.</p>}
+          {!roles.length && <p>No roles available. Reload the plugin.</p>}
         </div>}
-        <div className="role-picker-note">{composer.scope.kind === 'new-thread' ? 'Роль с первого сообщения' : 'Роль со следующего сообщения'} · в этом чате</div>
+        <div className="role-picker-note">{composer.scope.kind === 'new-thread' ? 'Applies from the first message' : 'Applies from the next message'} · in this thread</div>
       </Popover.Content></Popover.Portal>
     </Popover.Root>
 

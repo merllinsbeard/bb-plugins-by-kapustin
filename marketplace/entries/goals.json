@@ -3,7 +3,7 @@
   "displayName": "Goals",
   "description": "Keep your personal priorities available when you ask an agent to evaluate an idea or plan. Reorder goals and archive completed ones. Goals do not launch work automatically.",
   "icon": {
-    "url": "./icons/goals-0deb71d6.svg"
+    "url": "./icons/goals-05aa27fc.png"
   },
   "tags": [
     "priorities",
@@ -26,6 +26,7 @@
   },
   "overview": "./overview/goals.md",
   "screenshots": [
-    "./screenshots/goals/overview.png"
+    "./screenshots/goals/overview.png",
+    "./screenshots/goals/edit-goal.png"
   ]
 }

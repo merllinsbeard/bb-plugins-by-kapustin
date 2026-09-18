@@ -1,0 +1,2 @@
+# Unified patches use a space to mark unchanged blank lines.
+*.patch -whitespace

@@ -8,7 +8,7 @@
   },
   "bb": {
     "name": "Agent Roles",
-    "description": "Create specialist agents and connect them into visual workflows.",
+    "description": "Create reusable specialist profiles and start focused agent work with your configured providers.",
     "branding": {
       "icon": "UserRound"
     },

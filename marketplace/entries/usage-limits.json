@@ -3,7 +3,7 @@
   "displayName": "Usage Limits",
   "description": "See provider quota windows and reset times without leaving your work. View details across connected hosts and refresh on demand. Requires providers that report quota information to BB.",
   "icon": {
-    "url": "./icons/usage-limits-ba84151c.svg"
+    "url": "./icons/usage-limits-137be204.png"
   },
   "tags": [
     "quota",

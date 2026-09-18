@@ -18,7 +18,7 @@ export default function plugin(bb: BbPluginApi) {
   bb.storage.migrate(db, [`CREATE TABLE goals (scope TEXT PRIMARY KEY, course TEXT NOT NULL, priorities TEXT NOT NULL, constraints TEXT NOT NULL, revision INTEGER NOT NULL, updatedAt INTEGER NOT NULL)`]);
   const read = (scope: "global"): GoalDocument => (db.prepare('SELECT * FROM goals WHERE scope = ?').get(scope) as GoalDocument | undefined) ?? { scope, course: '', priorities: '', constraints: '', revision: 0, updatedAt: 0 };
   const save = db.transaction((input: Omit<GoalDocument, 'updatedAt'>) => {
-    if (read(input.scope).revision !== input.revision) throw new Error('Цели изменены в другой вкладке. Скопируйте свой текст и загрузите актуальную версию.');
+    if (read(input.scope).revision !== input.revision) throw new Error('Goals changed in another tab. Copy your draft and load the latest version.');
     const next = { ...input, revision: input.revision + 1, updatedAt: Date.now() };
     db.prepare('INSERT INTO goals VALUES (@scope, @course, @priorities, @constraints, @revision, @updatedAt) ON CONFLICT(scope) DO UPDATE SET course=excluded.course, priorities=excluded.priorities, constraints=excluded.constraints, revision=excluded.revision, updatedAt=excluded.updatedAt').run(next);
     return next;
@@ -31,7 +31,7 @@ export default function plugin(bb: BbPluginApi) {
     return { revision: 0, items: ([['course', old.course], ['priorities', old.priorities], ['constraints', old.constraints]] as const).filter(([, text]) => text.trim()).map(([id, text]) => ({ id, text, done: false })) };
   };
   const saveBoard = db.transaction((input: GoalBoard) => {
-    if (readBoard().revision !== input.revision) throw new Error('Цели уже изменены в другой вкладке. Обновите список перед сохранением.');
+    if (readBoard().revision !== input.revision) throw new Error('Goals changed in another tab. Refresh the list before saving.');
     const next = { ...input, revision: input.revision + 1 };
     db.prepare('INSERT INTO goal_board VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(JSON.stringify(next));
     return next;
@@ -39,7 +39,7 @@ export default function plugin(bb: BbPluginApi) {
   const context = () => {
     const current = readBoard();
     const sections = current.items.filter(i => !i.done).map((i, index) => `${index + 1}. ${i.text}`);
-    return ['Личные цели пользователя, сверху вниз по важности. Используйте их для сопоставления ответа, идеи или плана, когда пользователь об этом просит:', ...sections].join('\n\n');
+    return ['Personal goals, in priority order. Use them to evaluate an answer, idea or plan when the user asks:', ...sections].join('\n\n');
   };
   bb.rpc.register(rpcContract, { boardRead: () => readBoard(), boardSave: input => { const next = saveBoard(input); bb.realtime.publish('changed', {}); return next; }, read: ({ scope }) => read(scope), save: input => { const next = save(input); bb.realtime.publish('changed', { scope: next.scope }); return next; } });
   bb.agents.configure(() => ({ tools: [], skills: [], instructions: "The user keeps personal goals in the Goals sidebar. When the user asks to compare, align or evaluate an answer, idea, decision or plan against their goals, run `bb goals show` for the current list. Explain which goals the proposal supports, relevant tradeoffs and how to improve alignment. These are the user's personal goals, not agent tasks. Do not routinely check or apply them to unrelated requests, start work toward them, or edit/complete them without the user's request. If the list is empty, ask the user for their goals instead of inventing them." }));

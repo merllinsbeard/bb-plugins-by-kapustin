@@ -155,7 +155,7 @@ export default function plugin(bb: BbPluginApi) {
   const get = (id: string): Task => {
     const row = db.prepare("SELECT data FROM tasks WHERE id=?").get(id) as
       { data: string } | undefined;
-    if (!row) throw new Error("Задача не найдена");
+    if (!row) throw new Error("Task not found");
     return taskSchema.parse(JSON.parse(row.data));
   };
   const list = (): Task[] =>
@@ -186,7 +186,7 @@ export default function plugin(bb: BbPluginApi) {
     ).map((s) => sectionSchema.parse(s));
   const validateSection = (id: string | null | undefined) => {
     if (id && !sections().some((s) => s.id === id))
-      throw new Error("Раздел не найден");
+      throw new Error("Section not found");
   };
   const add = (text: string, sectionId: string | null) => {
     validateSection(sectionId);
@@ -207,7 +207,7 @@ export default function plugin(bb: BbPluginApi) {
   };
   const propose = (id: string, titles: string[]) =>
     change(id, (t) => {
-      if (t.deleted) throw new Error("Задача в корзине");
+      if (t.deleted) throw new Error("Task is in the trash");
       const parsed = z.array(title).min(1).max(50).parse(titles);
       t.suggestions = t.suggestions
         .filter((s) => s.parentId !== null)
@@ -225,7 +225,7 @@ export default function plugin(bb: BbPluginApi) {
         for (const j of t.jobs)
           if (j.status === "running") {
             j.status = "error";
-            j.error = "Работа прервана перезапуском. Можно запустить повторно.";
+            j.error = "Work was interrupted by a restart. You can run it again.";
           }
       });
   const active = (j: Job) => j.status === "queued" || j.status === "running";
@@ -271,25 +271,25 @@ export default function plugin(bb: BbPluginApi) {
               (h) => h.status === "connected" && h.type === "persistent",
             ) ?? hosts.find((h) => h.status === "connected");
           if (!machine)
-            throw new Error("Нет подключённой машины для фоновой работы.");
+            throw new Error("No connected host is available for background work.");
           const target = job.stepId
             ? task.steps.find((s) => s.id === job.stepId)
             : null;
-          if (job.stepId && !target) throw new Error("Подзадача была удалена.");
-          const prompt = `Ты фоновый помощник личного чек-листа. Ответ на русском. ${job.mode === "decompose" ? "Разложи выбранную задачу на 3–7 конкретных коротких шагов." : job.mode === "expand" ? "Развей идею: конкретный результат, варианты, связанные действия." : "Помоги выполнить выбранную задачу: подготовь полезный результат (текст, расчёт, анализ или решение), а не только план. Если нужны данные, задай конкретный вопрос в ответе."}
-Выбранная цель: ${job.targetTitle}
-${target ? "Работай ТОЛЬКО над этой подзадачей. Родительская задача дана как контекст." : ""}
-Контекст родителя: ${task.title}
-Заметки: ${task.notes}
-Шаги выбранной цели: ${JSON.stringify(task.steps.filter((s) => s.parentId === job.stepId).map((s) => ({ title: s.title, done: s.done })))}
-Предыдущие результаты по выбранной цели: ${JSON.stringify(
+          if (job.stepId && !target) throw new Error("The subtask was deleted.");
+          const prompt = `You are a background assistant for a personal checklist. Respond in English. ${job.mode === "decompose" ? "Break the selected task into 3–7 concrete, short steps." : job.mode === "expand" ? "Explore the idea: a concrete outcome, options, and related actions." : "Help with the selected task: produce a useful result (text, a calculation, analysis, or a solution), beyond a plan. If information is missing, ask a specific question in your answer."}
+Selected objective: ${job.targetTitle}
+${target ? "Work ONLY on this subtask. The parent task is provided as context." : ""}
+Parent context: ${task.title}
+Notes: ${task.notes}
+Steps for the selected objective: ${JSON.stringify(task.steps.filter((s) => s.parentId === job.stepId).map((s) => ({ title: s.title, done: s.done })))}
+Previous results for the selected objective: ${JSON.stringify(
             task.jobs
               .filter((j) => j.stepId === job.stepId && j.status === "done")
               .slice(-2)
               .map((j) => j.answer.slice(0, 6000)),
           )}
-Уточнение пользователя: ${job.instruction}
-Верни JSON: answer — полезный результат в Markdown, suggestions — массив предлагаемых шагов. Не создавай треды, не вызывай bb my-tasks и не меняй чек-лист. Не отмечай работу выполненной. Для декомпозиции и развития идеи инструменты не нужны. Для помощи можно исследовать данные доступными средствами; не выполняй внешние изменения и не утверждай, что действие выполнено, если только описал его. Все результаты верни текстом, не сохраняй файлы. Ограничения и недостающие данные укажи в answer.`;
+User instructions: ${job.instruction}
+Return JSON: answer — the useful result in Markdown; suggestions — an array of suggested steps. Do not create threads, call bb my-tasks, or modify the checklist. Do not mark work as complete. Breaking down tasks and exploring ideas need no tools. For help, you may research available data; do not make external changes or claim an action is complete when you only described it. Return all results as text without saving files. Describe limitations and missing information in answer.`;
           const result = await host.call(
             "run",
             {
@@ -311,7 +311,7 @@ ${target ? "Работай ТОЛЬКО над этой подзадачей. Р
             if (!active(j) || t.deleted) return;
             if (j.stepId && !t.steps.some((s) => s.id === j.stepId)) {
               j.status = "error";
-              j.error = "Подзадача удалена";
+              j.error = "Subtask deleted";
               return;
             }
             j.status = "done";
@@ -347,7 +347,7 @@ ${target ? "Работай ТОЛЬКО над этой подзадачей. Р
     sectionSave: ({ id, name, icon }) => {
       const current = sections();
       if (id && !current.some((s) => s.id === id))
-        throw new Error("Раздел не найден");
+        throw new Error("Section not found");
       if (
         current.some(
           (s) =>
@@ -355,9 +355,9 @@ ${target ? "Работай ТОЛЬКО над этой подзадачей. Р
             s.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
         )
       )
-        throw new Error("Раздел с таким именем уже есть");
+        throw new Error("A section with this name already exists");
       if (!id && current.length >= 100)
-        throw new Error("Можно создать до 100 разделов");
+        throw new Error("You can create up to 100 sections");
       const section = { id: id ?? randomUUID(), name, icon };
       db.prepare(
         "INSERT INTO sections(id,name,icon) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,icon=excluded.icon",
@@ -392,7 +392,7 @@ ${target ? "Работай ТОЛЬКО над этой подзадачей. Р
     stepToggle: ({ id, stepId, done }) =>
       change(id, (t) => {
         const s = t.steps.find((s) => s.id === stepId);
-        if (!s) throw new Error("Шаг не найден");
+        if (!s) throw new Error("Step not found");
         s.done = done;
       }),
     stepRemove: ({ id, stepId }) =>
@@ -435,9 +435,9 @@ ${target ? "Работай ТОЛЬКО над этой подзадачей. Р
       }),
     assist: ({ id, mode, stepId, instruction, requestId }) => {
       const task = get(id);
-      if (task.deleted) throw new Error("Сначала восстановите задачу");
+      if (task.deleted) throw new Error("Restore the task first");
       const target = stepId ? task.steps.find((s) => s.id === stepId) : null;
-      if (stepId && !target) throw new Error("Подзадача не найдена");
+      if (stepId && !target) throw new Error("Subtask not found");
       const prior = task.jobs.find(
         (j) => j.id === requestId || (j.stepId === stepId && active(j)),
       );
@@ -467,18 +467,18 @@ ${target ? "Работай ТОЛЬКО над этой подзадачей. Р
   });
   bb.cli.register({
     name: "my-tasks",
-    summary: "Личный чек-лист «Мои задачи»",
+    summary: "Apple Style Tasks personal checklist",
     commands: [
-      { name: "list", summary: "Список задач", usage: "bb my-tasks list" },
-      { name: "get", summary: "Задача целиком", usage: "bb my-tasks get <id>" },
+      { name: "list", summary: "List tasks", usage: "bb my-tasks list" },
+      { name: "get", summary: "Show task details", usage: "bb my-tasks get <id>" },
       {
         name: "add",
-        summary: "Добавить задачу на потом",
+        summary: "Add a task for later",
         usage: "bb my-tasks add <title>",
       },
       {
         name: "propose",
-        summary: "Предложить шаги для выбора пользователем",
+        summary: "Suggest steps for the user to choose",
         usage: "bb my-tasks propose <id> <JSON-array-of-strings>",
       },
     ],

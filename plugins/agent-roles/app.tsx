@@ -312,7 +312,7 @@ function SpawnBox({ role, onClose, onFiled }: { role: Role; onClose: () => void;
   );
 }
 
-/** The role card ("плашка") shown in thread headers and via `::agent-role{slug="…"}` in messages. */
+/** The role card shown in thread headers and via `::agent-role{slug="…"}` in messages. */
 function RoleCard({ role, taskKey, compact }: { role: Pick<Role, "name" | "slug" | "description" | "color"> & { instructions?: string }; taskKey?: string | null; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
@@ -404,6 +404,7 @@ function RoleJobs({ roles, refreshKey }: { roles: Role[]; refreshKey: number }) 
 }
 
 interface SyncStatus {
+  enabled: boolean;
   agentsDir: string;
   running: boolean;
   last: { at: number; agentsDir: string; actions: Array<{ slug: string; action: string; detail?: string }>; problems: string[] } | null;
@@ -412,6 +413,7 @@ interface SyncStatus {
 
 function SyncBar({ status, busy, onSync }: { status: SyncStatus | null; busy: boolean; onSync: () => void }) {
   if (!status) return null;
+  if (!status.enabled) return <div className="rounded-md border border-border/60 px-3 py-2 text-xs text-muted-foreground">File and Tasks preset synchronization is off. Enable it in plugin settings when you need it.</div>;
   const last = status.last;
   const when = last ? new Date(last.at).toLocaleTimeString() : "never";
   const summary = last
@@ -998,27 +1000,8 @@ function RunDetail({ id, onBack }: { id: string; onBack: () => void }) {
 // Root
 // ---------------------------------------------------------------------------
 
-function RootPage({ subPath }: { subPath: string }) {
-  const navigate = useBbNavigate();
-  const parts = subPath.split("/").filter(Boolean);
-  const tab: Tab = parts[0] === "teams" ? "teams" : parts[0] === "runs" ? "runs" : "roles";
-  const runId = tab === "runs" ? parts[1] ?? null : null;
-  const go = (sub: string) => navigate.toPluginPanel(PANEL_PATH, { subPath: sub });
-  return (
-    <div className="h-full min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto box-border w-full max-w-3xl px-5 pb-16 pt-6 md:px-8 md:pt-8">
-        <div className="mb-8 flex items-center gap-1">
-          {(["roles", "teams", "runs"] as Tab[]).map((t) => (
-            <button key={t} type="button" onClick={() => go(t === "roles" ? "" : t)}
-              className={cn("rounded-full px-3 py-1.5 text-sm capitalize transition-colors", tab === t ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground")}>
-              {t}
-            </button>
-          ))}
-        </div>
-        {tab === "roles" ? <RolesView /> : tab === "teams" ? <TeamsView onOpenRun={(id) => go(`runs/${id}`)} /> : runId ? <RunDetail id={runId} onBack={() => go("runs")} /> : <RunsView onOpen={(id) => go(`runs/${id}`)} />}
-      </div>
-    </div>
-  );
+function RootPage() {
+  return <div className="h-full min-h-0 flex-1 overflow-y-auto"><div className="mx-auto box-border w-full max-w-3xl px-5 pb-16 pt-6 md:px-8 md:pt-8"><RolesView /></div></div>;
 }
 
 export default definePluginApp((app) => {

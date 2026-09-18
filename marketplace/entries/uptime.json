@@ -3,7 +3,7 @@
   "displayName": "Uptime",
   "description": "Monitor website availability and response times from your BB server. View recent checks and see when a site is down. Requires the server to remain running and able to reach the sites.",
   "icon": {
-    "url": "./icons/uptime-a8ffdd77.svg"
+    "url": "./icons/uptime-2337f766.png"
   },
   "tags": [
     "monitoring",

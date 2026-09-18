@@ -7,7 +7,7 @@
     "bbPluginSdk": ">=0.4.87"
   },
   "bb": {
-    "name": "Мои задачи",
+    "name": "Apple Style Tasks",
     "description": "Plan personal work with sections, nested steps and optional agent assistance.",
     "branding": {
       "icon": "ListTodo"

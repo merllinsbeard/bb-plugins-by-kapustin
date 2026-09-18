@@ -14,9 +14,9 @@ import { Input } from "@/components/ui/input";
 import "./style.css";
 
 const labels: Record<Mode, string> = {
-  expand: "Развить идею",
-  decompose: "Разбить на шаги",
-  help: "Помочь выполнить",
+  expand: "Explore the idea",
+  decompose: "Break into steps",
+  help: "Help with this",
 };
 
 function Page() {
@@ -81,7 +81,7 @@ function Page() {
   const allActive = (tasks ?? []).filter((t) => !t.deleted && !t.done);
   const trash = (tasks ?? []).filter((t) => t.deleted);
   const groups = [
-    { id: "none", name: "Без раздела", icon: "📥" },
+    { id: "none", name: "Inbox", icon: "📥" },
     ...sections,
   ].map((section) => ({
     ...section,
@@ -98,7 +98,7 @@ function Page() {
           checked={t.done}
           disabled={busy || t.deleted}
           onCheckedChange={(v) => void change(t.id, { done: v === true })}
-          aria-label={`${t.done ? "Вернуть в работу" : "Выполнить"}: ${t.title}`}
+          aria-label={`${t.done ? "Mark as active" : "Complete"}: ${t.title}`}
         />
         <button
           className="mt-row-main"
@@ -110,29 +110,29 @@ function Page() {
             (j) => j.status === "running" || j.status === "queued",
           ) && (
             <span className="mt-meta" role="status">
-              Помощник работает в фоне…
+              Assistant working in the background…
             </span>
           )}
           {t.jobs.at(-1)?.status === "done" && (
-            <span className="mt-meta">Есть результат помощника</span>
+            <span className="mt-meta">Assistant result ready</span>
           )}
           {t.jobs.at(-1)?.status === "error" && (
             <span className="mt-meta">
-              Помощник: требуется повторный запуск
+              Assistant: retry needed
             </span>
           )}
           {(t.steps.length > 0 || t.suggestions.length > 0) && (
             <span className="mt-meta">
               {t.steps.length > 0
-                ? `${t.steps.filter((s) => s.done).length}/${t.steps.length} шагов`
+                ? `${t.steps.filter((s) => s.done).length}/${t.steps.length} steps`
                 : ""}
-              {t.suggestions.length > 0 ? " · Есть предложения" : ""}
+              {t.suggestions.length > 0 ? " · Suggestions available" : ""}
             </span>
           )}
         </button>
         <button
           className="mt-small mt-muted"
-          aria-label={`Открыть детали: ${t.title}`}
+          aria-label={`Open details: ${t.title}`}
           onClick={() => choose(selected === t.id ? null : t.id)}
         >
           <Icon name="ChevronRight" className="size-4" />
@@ -144,11 +144,11 @@ function Page() {
       <main className="mt-main">
         <header className="mt-header">
           <div>
-            <h1>Мои задачи</h1>
-            <p className="mt-muted">Осталось задач: {allActive.length}</p>
+            <h1>Apple Style Tasks</h1>
+            <p className="mt-muted">Tasks remaining: {allActive.length}</p>
           </div>
           <Button variant="outline" onClick={() => setManaging(true)}>
-            Разделы
+            Sections
           </Button>
         </header>
         {managing && (
@@ -162,12 +162,12 @@ function Page() {
         )}
         {error && (
           <p className="mt-error" role="alert">
-            {error} <button onClick={() => void refresh()}>Обновить</button>
+            {error} <button onClick={() => void refresh()}>Refresh</button>
           </p>
         )}
         {deletedId && (
           <div className="mt-notice">
-            Задача в корзине.{" "}
+            Task moved to trash.{" "}
             <button
               disabled={busy}
               onClick={() =>
@@ -180,12 +180,12 @@ function Page() {
                 })
               }
             >
-              Отменить
+              Undo
             </button>
           </div>
         )}
         {tasks === null ? (
-          <p className="mt-empty">Загружаем задачи…</p>
+          <p className="mt-empty">Loading tasks…</p>
         ) : (
           <>
             {groups.map((group) => {
@@ -210,7 +210,7 @@ function Page() {
                     />
                     {done.length > 0 && (
                       <details className="mt-completed-group">
-                        <summary>Выполнено · {done.length}</summary>
+                        <summary>Completed · {done.length}</summary>
                         {rows(done)}
                       </details>
                     )}
@@ -219,15 +219,15 @@ function Page() {
               );
             })}
             <details className="mt-trash">
-              <summary>🗑️ Корзина · {trash.length}</summary>
-              {trash.length ? rows(trash) : <p className="mt-trash-empty">Корзина пуста</p>}
+              <summary>🗑️ Trash · {trash.length}</summary>
+              {trash.length ? rows(trash) : <p className="mt-trash-empty">Trash is empty</p>}
             </details>
           </>
         )}
         <dialog
           ref={dialog}
           className="mt-popup"
-          aria-label="Детали задачи"
+          aria-label="Task details"
           onCancel={() => choose(null)}
           onClick={(e) => {
             if (e.target === e.currentTarget) {
@@ -243,11 +243,11 @@ function Page() {
           }}
         >
           {task && (
-            <section className="mt-detail" aria-label="Содержимое задачи">
+            <section className="mt-detail" aria-label="Task content">
               <div className="mt-detail-heading">
-                <h2>Задача</h2>
+                <h2>Task</h2>
                 <button
-                  aria-label="Закрыть детали"
+                  aria-label="Close details"
                   onClick={() => choose(null)}
                 >
                   <Icon name="X" className="size-4" />
@@ -265,16 +265,16 @@ function Page() {
                 onSave={(title, notes) => change(task.id, { title, notes })}
               />
               <label className="mt-section-select">
-                Раздел{" "}
+                Section{" "}
                 <select
-                  aria-label="Раздел задачи"
+                  aria-label="Task section"
                   disabled={busy}
                   value={task.sectionId ?? ""}
                   onChange={(e) =>
                     void change(task.id, { sectionId: e.target.value || null })
                   }
                 >
-                  <option value="">📥 Без раздела</option>
+                  <option value="">📥 Inbox</option>
                   {sections.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.icon} {s.name}
@@ -284,7 +284,7 @@ function Page() {
               </label>
               <div className="mt-steps">
                 <h3>
-                  Шаги{" "}
+                  Steps{" "}
                   {task.steps.length > 0 && (
                     <span className="mt-muted">
                       {task.steps.filter((s) => s.done).length}/
@@ -304,7 +304,7 @@ function Page() {
               <Help task={task} stepId={null} busy={busy} run={run} rpc={rpc} />
               {task.threads.length > 0 && (
                 <details className="mt-conversations">
-                  <summary>Ранее созданные разговоры</summary>
+                  <summary>Earlier conversations</summary>
                   {task.threads.map((link, i) => (
                     <Button
                       key={link.id}
@@ -312,7 +312,7 @@ function Page() {
                       size="sm"
                       onClick={() => nav.toThread(link.id)}
                     >
-                      {labels[link.mode as Mode] ?? "Помощь"} · {i + 1}
+                      {labels[link.mode as Mode] ?? "Help"} · {i + 1}
                     </Button>
                   ))}
                 </details>
@@ -333,7 +333,7 @@ function Page() {
                     })
                   }
                 >
-                  {task.deleted ? "Восстановить" : "В корзину"}
+                  {task.deleted ? "Restore" : "Move to trash"}
                 </Button>
               </div>
             </section>
@@ -357,10 +357,10 @@ function TaskForm({ busy, sectionName, add }: {
       });
     }}>
       <Icon name="Plus" className="size-5" />
-      <Input aria-label={`Новая задача: ${sectionName}`} placeholder="Новая задача"
+      <Input aria-label={`New task: ${sectionName}`} placeholder="New task"
         value={title} maxLength={500} disabled={busy}
         onChange={(e) => setTitle(e.target.value)} />
-      {title.trim() && <Button size="sm" variant="ghost" disabled={busy} type="submit">Добавить</Button>}
+      {title.trim() && <Button size="sm" variant="ghost" disabled={busy} type="submit">Add</Button>}
     </form>
   );
 }
@@ -386,21 +386,21 @@ function Editor({
     >
       <Input
         className="mt-edit-title"
-        aria-label="Название задачи"
+        aria-label="Task title"
         value={title}
         maxLength={500}
         onChange={(e) => setTitle(e.target.value)}
       />
       <textarea
-        aria-label="Заметки к задаче"
-        placeholder="Контекст, ссылки или пара мыслей…"
+        aria-label="Task notes"
+        placeholder="Context, links, or a few thoughts…"
         value={notes}
         maxLength={20000}
         onChange={(e) => setNotes(e.target.value)}
       />
       {dirty && (
         <Button size="sm" disabled={busy || !title.trim()} type="submit">
-          Сохранить изменения
+          Save changes
         </Button>
       )}
     </form>
@@ -426,8 +426,8 @@ function StepForm({
       }}
     >
       <Input
-        aria-label="Новый шаг"
-        placeholder="+ Добавить небольшой шаг"
+        aria-label="New step"
+        placeholder="+ Add a small step"
         value={text}
         maxLength={500}
         onChange={(e) => setText(e.target.value)}
@@ -438,7 +438,7 @@ function StepForm({
         variant="ghost"
         disabled={busy || !text.trim()}
       >
-        Добавить шаг
+        Add step
       </Button>
     </form>
   );
@@ -457,8 +457,8 @@ function Suggestions({
   const [ids, setIds] = useState(task.suggestions.map((s) => s.id));
   return (
     <div className="mt-suggestions">
-      <h3>Предложенные шаги</h3>
-      <p className="mt-muted">Выбери, что добавить в свой план.</p>
+      <h3>Suggested steps</h3>
+      <p className="mt-muted">Choose what to add to your plan.</p>
       {task.suggestions.map((s) => (
         <label className="mt-step" key={s.id}>
           <Checkbox
@@ -476,7 +476,7 @@ function Suggestions({
           disabled={busy || !ids.length}
           onClick={() => void accept(ids)}
         >
-          Добавить выбранные ({ids.length})
+          Add selected ({ids.length})
         </Button>
         <Button
           size="sm"
@@ -484,7 +484,7 @@ function Suggestions({
           disabled={busy}
           onClick={() => void dismiss()}
         >
-          Убрать предложения
+          Dismiss suggestions
         </Button>
       </div>
     </div>
@@ -493,7 +493,7 @@ function Suggestions({
 export default definePluginApp((app) => {
   app.slots.navPanel({
     id: "checklist",
-    title: "Мои задачи",
+    title: "Apple Style Tasks",
     icon: "ListTodo",
     path: "checklist",
     component: Page,
@@ -522,7 +522,7 @@ function Steps({ task, busy, run, rpc }: WorkProps) {
             <Checkbox
               checked={s.done}
               disabled={busy}
-              aria-label={`Выполнить шаг: ${s.title}`}
+              aria-label={`Complete step: ${s.title}`}
               onCheckedChange={(v) =>
                 void run(() =>
                   rpc.call("stepToggle", {
@@ -537,7 +537,7 @@ function Steps({ task, busy, run, rpc }: WorkProps) {
             <Button
               size="sm"
               variant="ghost"
-              aria-label={`Помощь с подзадачей: ${s.title}`}
+              aria-label={`Help with subtask: ${s.title}`}
               onClick={() => setOpened(opened === s.id ? null : s.id)}
             >
               {task.jobs.some(
@@ -545,11 +545,11 @@ function Steps({ task, busy, run, rpc }: WorkProps) {
                   j.stepId === s.id &&
                   (j.status === "queued" || j.status === "running"),
               )
-                ? "В работе…"
-                : "Помощь"}
+                ? "Working…"
+                : "Help"}
             </Button>
             <button
-              aria-label={`Удалить шаг: ${s.title}`}
+              aria-label={`Delete step: ${s.title}`}
               disabled={busy}
               onClick={() =>
                 void run(() =>
@@ -586,15 +586,15 @@ function Help({
   };
   return (
     <div className="mt-help">
-      <h3>{stepId ? "Помощь с этой подзадачей" : "Подключить помощь"}</h3>
-      <p className="mt-muted">Astra · low effort · в фоне</p>
+      <h3>{stepId ? "Help with this subtask" : "Ask the assistant"}</h3>
+      <p className="mt-muted">Astra · low effort · in the background</p>
       {!task.deleted && (
         <>
           <Input
             aria-label={
-              stepId ? "Уточнение для подзадачи" : "Уточнение для помощника"
+              stepId ? "Instructions for this subtask" : "Instructions for the assistant"
             }
-            placeholder="Что учесть? Необязательно"
+            placeholder="Anything to keep in mind? Optional"
             value={instruction}
             maxLength={10000}
             onChange={(e) => setInstruction(e.target.value)}
@@ -628,8 +628,8 @@ function Help({
         <div className="mt-job-status" role="status">
           <span>
             {labels[pending.mode]}:{" "}
-            {pending.status === "queued" ? "в очереди" : "выполняется"}… Можно
-            закрыть окно.
+            {pending.status === "queued" ? "queued" : "running"}… You can
+            close this window.
           </span>
           <Button
             size="sm"
@@ -641,7 +641,7 @@ function Help({
               )
             }
           >
-            Остановить
+            Stop
           </Button>
         </div>
       )}
@@ -665,12 +665,12 @@ function Help({
             <summary>
               {labels[j.mode]} ·{" "}
               {j.status === "done"
-                ? "Готово"
+                ? "Done"
                 : j.status === "error"
-                  ? "Не получилось"
-                  : "Остановлено"}{" "}
+                  ? "Failed"
+                  : "Stopped"}{" "}
               <span className="mt-muted">
-                {new Date(j.createdAt).toLocaleTimeString("ru-RU", {
+                {new Date(j.createdAt).toLocaleTimeString("en-US", {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
@@ -681,7 +681,7 @@ function Help({
             ) : j.answer ? (
               <Markdown content={j.answer} />
             ) : (
-              <p className="mt-muted">Можно запустить помощь повторно.</p>
+              <p className="mt-muted">You can run the assistant again.</p>
             )}
           </details>
         ))}
@@ -737,18 +737,18 @@ function SectionManager({
     <dialog
       ref={ref}
       className="mt-popup"
-      aria-label="Управление разделами"
+      aria-label="Manage sections"
       onCancel={close}
     >
       <section className="mt-detail">
         <div className="mt-detail-heading">
-          <h2>Разделы задач</h2>
-          <button aria-label="Закрыть разделы" onClick={close}>
+          <h2>Task sections</h2>
+          <button aria-label="Close sections" onClick={close}>
             <Icon name="X" className="size-4" />
           </button>
         </div>
         <p className="mt-muted">
-          Создай свои разделы и выбери для каждого иконку.
+          Create your own sections and choose an icon for each.
         </p>
         {sections.map((s) => (
           <div className="mt-section-row" key={s.id}>
@@ -757,20 +757,20 @@ function SectionManager({
             <Button
               variant="ghost"
               size="sm"
-              aria-label={`Изменить раздел: ${s.name}`}
+              aria-label={`Edit section: ${s.name}`}
               onClick={() => {
                 setId(s.id);
                 setName(s.name);
                 setIcon(s.icon);
               }}
             >
-              Изменить
+              Edit
             </Button>
             <Button
               variant="ghost"
               size="sm"
               disabled={busy}
-              aria-label={`Удалить раздел: ${s.name}`}
+              aria-label={`Delete section: ${s.name}`}
               onClick={() =>
                 void run(() => rpc.call("sectionRemove", { id: s.id })).then(
                   (ok) => {
@@ -779,12 +779,12 @@ function SectionManager({
                 )
               }
             >
-              Удалить
+              Delete
             </Button>
           </div>
         ))}
         <p className="mt-muted">
-          При удалении раздела задачи переходят в «Без раздела».
+          Deleting a section moves its tasks to the Inbox.
         </p>
         <form
           className="mt-section-form"
@@ -806,20 +806,20 @@ function SectionManager({
             });
           }}
         >
-          <h3>{id ? "Изменить раздел" : "Новый раздел"}</h3>
+          <h3>{id ? "Edit section" : "New section"}</h3>
           <Input
-            aria-label="Название раздела"
+            aria-label="Section name"
             value={name}
             maxLength={60}
-            placeholder="Например, Работа или Идеи"
+            placeholder="For example, Work or Ideas"
             onChange={(e) => setName(e.target.value)}
           />
-          <div className="mt-icon-picker" aria-label="Иконка раздела">
+          <div className="mt-icon-picker" aria-label="Section icon">
             {icons.map((value) => (
               <button
                 key={value}
                 type="button"
-                aria-label={`Иконка ${value}`}
+                aria-label={`Icon ${value}`}
                 aria-pressed={icon === value}
                 onClick={() => setIcon(value)}
               >
@@ -834,11 +834,11 @@ function SectionManager({
           )}
           <div className="mt-help-buttons">
             <Button type="submit" disabled={busy || !name.trim()}>
-              {id ? "Сохранить раздел" : "Создать раздел"}
+              {id ? "Save section" : "Create section"}
             </Button>
             {id && (
               <Button type="button" variant="ghost" onClick={reset}>
-                Отмена
+                Cancel
               </Button>
             )}
           </div>

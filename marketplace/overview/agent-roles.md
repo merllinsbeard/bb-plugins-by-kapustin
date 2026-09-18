@@ -1,7 +1,13 @@
-## Reusable specialists and workflows
+## Give every specialist a clear role
 
-Create agent profiles with instructions and execution preferences. Build workflows by connecting steps in the visual graph editor. Run independent steps in parallel, feed results to later steps, and inspect each run and agent conversation.
+Create reusable profiles with instructions and optional provider, model, reasoning and permission defaults. Start focused threads or file jobs through BB Tasks using the included command reference.
 
-## Requirements and data
+## Optional companions
 
-Execution uses your configured BB providers and their account quotas. Task jobs integrate with the bundled Tasks plugin. The optional Role Picker companion applies roles in the message composer. Synchronization with local Claude agent files and Tasks presets is opt-in. The package includes generic example roles and workflows, with no personal profiles or run history.
+Agent Roles works on its own. Role Picker can apply your profiles to the current composer. Visual Workflows can import profiles and existing legacy team templates as independent copies, then run and inspect visual graphs in its own page.
+
+Existing team data and run history are preserved; legacy CLI commands remain available for migration. The main Agent Roles page now focuses on specialists.
+
+## Your settings stay yours
+
+Local Claude agent-file and Tasks-preset synchronization is off by default. Enable it only after reviewing the target directory and settings. Running workers uses your configured provider quotas.

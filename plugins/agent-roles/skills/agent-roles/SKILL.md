@@ -15,10 +15,9 @@ runs one or more roles (in parallel or one by one) and passes their outputs
 to the next stage. Since the DAG update a team is a graph: every node is one
 role invocation with `inputs` (node ids whose outputs it receives); nodes
 whose inputs are done start immediately, so independent nodes run in
-parallel. The Teams tab is a visual constructor for this graph.
+parallel. Legacy team execution remains available through the CLI for existing data. The separate Visual Workflows plugin owns the visual constructor for new workflows.
 
-Roles and teams are edited on the **Agent roles** page (sidebar). The CLI is
-for using them.
+Roles are edited on the **Agent Roles** page (sidebar). Visual Workflows has its own step profiles, graphs and runs; it can import independent copies of legacy Agent Roles data. Neither plugin requires the other.
 
 ## Commands
 
@@ -68,14 +67,15 @@ attributed to you and shows up under your thread.
 - Node prompts support `{task}`, `{inputs}` (outputs of the node's inputs,
   labelled), `{all}` (everything finished so far) and `{<nodeId>}` for one
   specific node's output.
-- The team editor can show the same graph as a builtin BB workflow script
+- The separate Visual Workflows editor can show its graph as a builtin BB workflow script
   (`Show as bb workflow script` → copy to `.bb/workflows/<name>.js`) for
   durable, resumable runs via `bb workflows run`.
 
 ## One role, three surfaces
 
-Every role is mirrored automatically (a few seconds after any edit, plus a
-periodic pass) to:
+Synchronization is off by default. When `syncEnabled` is enabled and the agent
+directory is configured, each role is mirrored after edits and on a periodic
+pass to:
 
 - a **Claude Code subagent file** `~/.claude/agents/<slug>.md` — standard
   frontmatter (`name`, `description`, `model`, `tools`) plus a `bb:` block
@@ -101,8 +101,8 @@ prints what changed; `--status` shows the last report.
   (setting, default 45 min); the run then fails and pending steps are cancelled.
 - Roles referenced by a team must exist; deleting a role breaks those teams.
 
-## Visual workflow editor
+## Optional Visual Workflows companion
 
-Teams open in a popup. Add an agent step from the canvas toolbar or the + beside a node. Connect output/input ports by dragging or clicking. Select a line to remove it; select a node to edit its prompt, role, dependencies and final-output setting. Moving nodes saves optional `position: { x, y }` coordinates with the graph; coordinates never change execution dependencies. Auto layout clears positions. Invalid cycles are rejected before changing the draft. Save persists changes; Cancel/Close discards them.
+The following canvas controls belong to the independently installed Visual Workflows plugin. Agent Roles keeps its legacy CLI and records for compatibility. In Visual Workflows, teams open in a popup. Add an agent step from the canvas toolbar or the + beside a node. Connect output/input ports by dragging or clicking. Select a line to remove it; select a node to edit its prompt, role, dependencies and final-output setting. Moving nodes saves optional `position: { x, y }` coordinates with the graph; coordinates never change execution dependencies. Auto layout clears positions. Invalid cycles are rejected before changing the draft. Save persists changes; Cancel/Close discards them.
 
 Existing arrows can be reconnected by dragging the line or destination input port. Selecting an arrow exposes handles for either end; drag a handle onto another step. Drops outside and Escape cancel, and invalid connections preserve the old edge. Both mouse and touch use pointer capture and a live preview.

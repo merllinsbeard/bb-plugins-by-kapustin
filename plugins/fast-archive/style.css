@@ -1,0 +1,1 @@
+.fast-archive-button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;color:var(--muted-foreground);background:transparent;border:0;cursor:pointer}.fast-archive-button:hover{background:var(--muted);color:var(--foreground)}.fast-archive-button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}

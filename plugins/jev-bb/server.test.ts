@@ -1,0 +1,12 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createFakePluginHost} from '@get-bb/plugin-sdk/testing';import plugin from './server.ts';
+test('Eco Mode starts off; a missing key prevents activation and never leaks via status',async()=>{
+ const host=createFakePluginHost({pluginId:'jev-bb',sdk:{threads:{getPluginMetadata:()=>({})}}});try{plugin(host.bb);assert.deepEqual(await host.harness.callRpc('status',{threadId:'t1'}),{enabled:false,ready:false,stats:{reads:0,inputChars:0,returnedChars:0}});await assert.rejects(host.harness.callRpc('toggle',{threadId:'t1',enabled:true}),/API key/);assert.equal(host.harness.sdk.callsTo('threads.updatePluginMetadata').length,0);}finally{await host.harness.dispose();}
+});
+test('toggle updates only the requesting thread; status exposes readiness but no credential',async()=>{
+ let meta={ecoMode:false};const secret='synthetic-test-credential';const host=createFakePluginHost({pluginId:'jev-bb',settings:{apiKey:secret},sdk:{threads:{getPluginMetadata:()=>meta,updatePluginMetadata:args=>{meta={ecoMode:args.set?.ecoMode===true};return meta;}}}});
+ try{plugin(host.bb);const result:any=await host.harness.callRpc('toggle',{threadId:'t1',enabled:true});assert.equal(result.enabled,true);assert.equal(result.ready,true);assert.doesNotMatch(JSON.stringify(result),new RegExp(secret));assert.equal(host.harness.sdk.callsTo('threads.spawn').length,0);}finally{await host.harness.dispose();}
+});
+test('file reads target the thread environment host and preserve instructions without external requests',async()=>{
+ const host=createFakePluginHost({pluginId:'jev-bb',settings:{apiKey:'synthetic-only'},sdk:{threads:{getPluginMetadata:()=>({ecoMode:true}),get:()=>({environmentId:'remote-env'})},environments:{get:()=>({path:'/workspace/project',hostId:'remote-host'})},files:{read:()=>({content:'Never overwrite existing user data.',contentEncoding:'utf8',sizeBytes:35,path:'/workspace/project/AGENTS.md',sha256:'test'})}}});
+ try {plugin(host.bb);const result=await host.harness.runCli(['read','AGENTS.md','--task','Inspect conventions'],{threadId:'t1',signal:new AbortController().signal});assert.equal(result.exitCode,0);assert.match(result.stdout,/Never overwrite/);const calls=host.harness.sdk.callsTo('files.read');assert.equal(calls.length,1);assert.equal((calls[0][0] as any).hostId,'remote-host');assert.equal((calls[0][0] as any).path,'/workspace/project/AGENTS.md');assert.equal((calls[0][0] as any).rootPath,'/workspace/project');}finally{await host.harness.dispose();}
+});

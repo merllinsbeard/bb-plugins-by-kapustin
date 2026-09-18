@@ -78,22 +78,22 @@ export default experimental_defineHostEntry({
           };
           child.on("error", (error) => {
             cleanup();
-            reject(new Error(`Не удалось запустить Codex: ${error.message}`));
+            reject(new Error(`Could not start Codex: ${error.message}`));
           });
           child.on("close", (code) => {
             cleanup();
             if (stopped)
               reject(
                 new Error(
-                  "Фоновая работа остановлена или превышено время ожидания",
+                  "Background work was stopped or timed out",
                 ),
               );
             else if (code !== 0)
               reject(
                 new Error(
                   /auth|unauthorized|login|401/i.test(stderr)
-                    ? "Нужен вход в Codex на машине выполнения."
-                    : `Codex завершился с ошибкой (${code}). Проверь доступность gpt-6-astra и лимиты аккаунта.`,
+                    ? "Sign in to Codex on the execution host."
+                    : `Codex exited with an error (${code}). Check gpt-6-astra availability and your account limits.`,
                 ),
               );
             else resolve();

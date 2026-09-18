@@ -7,7 +7,7 @@
     "bbPluginSdk": ">=0.4.87"
   },
   "bb": {
-    "name": "Цели",
+    "name": "Goals",
     "description": "Keep your personal priorities available when you ask an agent to evaluate an idea or plan.",
     "branding": {
       "icon": "Target"

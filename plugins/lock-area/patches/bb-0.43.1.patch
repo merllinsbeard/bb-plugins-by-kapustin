@@ -1,0 +1,1001 @@
+--- a/apps/app/src/lib/plugin-sdk-hooks.ts
++++ b/apps/app/src/lib/plugin-sdk-hooks.ts
+@@ -1,3 +1,8 @@
++import { useStore } from "jotai";
++import { useOptionalPaneContext } from "@/views/thread-detail/PaneContext";
++import { useSplitWorkspaceActive } from "@/hooks/useSplitWorkspaceActive";
++import { splitLayoutAtom, maximizedPaneIdAtom } from "./split-layout/atoms";
++import { findPane, setPaneLocked } from "./split-layout";
+ import {
+   useCallback,
+   useContext,
+@@ -398,6 +403,27 @@
+ }
+ 
+ function useExperimentalAppPanel(): ExperimentalAppPanel {
++  const store = useStore();
++  const pane = useOptionalPaneContext();
++  const active = useSplitWorkspaceActive();
++  const paneId = pane?.paneId;
++  const experimental_setPaneLocked = useCallback(
++    (locked: boolean) => {
++      const layout = store.get(splitLayoutAtom);
++      if (
++        typeof locked !== "boolean" ||
++        !active ||
++        !paneId ||
++        layout === null ||
++        !findPane(layout.root, paneId)
++      )
++        return false;
++      store.set(splitLayoutAtom, setPaneLocked(layout, paneId, locked));
++      store.set(maximizedPaneIdAtom, null);
++      return true;
++    },
++    [active, paneId, store],
++  );
+   const pluginId = usePluginId();
+   const appNavigation = useAppNavigationHost();
+   const openFixedTab = useCallback<ExperimentalAppPanel["openFixedTab"]>(
+@@ -420,7 +446,10 @@
+     },
+     [appNavigation, pluginId],
+   );
+-  return useMemo(() => ({ openFixedTab }), [openFixedTab]);
++  return useMemo(
++    () => ({ openFixedTab, experimental_setPaneLocked }),
++    [openFixedTab, experimental_setPaneLocked],
++  );
+ }
+ 
+ function useExperimentalFixedTabTarget<Target extends JsonValue>(
+--- a/apps/app/src/lib/split-layout/atoms.ts
++++ b/apps/app/src/lib/split-layout/atoms.ts
+@@ -6,7 +6,7 @@
+   type SyncStorage,
+ } from "@/lib/browser-storage";
+ import type { ThreadRoutePathArgs } from "@/lib/route-paths";
+-import { findPane, listPanes, removePane } from "./ops";
++import { findPane, listPanes, removePane, setPaneLocked } from "./ops";
+ import {
+   deserializeSplitLayout,
+   serializeSplitLayout,
+@@ -75,7 +75,10 @@
+       if (pane === undefined) {
+         break;
+       }
+-      const next = removePane(layout, pane.paneId);
++      const next = removePane(
++        setPaneLocked(layout, pane.paneId, false),
++        pane.paneId,
++      );
+       if (next === layout) {
+         break;
+       }
+@@ -103,7 +106,10 @@
+             threadId: focused.content.threadId,
+           }
+         : null;
+-    if (survivorRoute === null) {
++    if (
++      survivorRoute === null &&
++      !listPanes(layout.root).some((pane) => pane.locked)
++    ) {
+       set(splitLayoutAtom, null);
+       set(maximizedPaneIdAtom, null);
+       return { removedAny: true, focusedRoute: null };
+--- a/apps/app/src/lib/split-layout/openPaneContentInSplit.ts
++++ b/apps/app/src/lib/split-layout/openPaneContentInSplit.ts
+@@ -3,7 +3,7 @@
+   countPanes,
+   findPaneByContent,
+   MAX_PANES,
+-  replacePaneContent,
++  openContentInUnlockedPane,
+   setFocus,
+   splitPane,
+   type PaneContent,
+@@ -43,7 +43,7 @@
+     existing !== null
+       ? setFocus(layout, existing.paneId)
+       : countPanes(layout.root) >= MAX_PANES
+-        ? replacePaneContent(layout, layout.focusedPaneId, content)
++        ? openContentInUnlockedPane(layout, content)
+         : splitPane(layout, layout.focusedPaneId, "right", content);
+   if (next !== layout) store.set(splitLayoutAtom, next);
+   void navigate(route, existing !== null ? { replace: true } : undefined);
+--- a/apps/app/src/lib/split-layout/openThreadInSplit.ts
++++ b/apps/app/src/lib/split-layout/openThreadInSplit.ts
+@@ -5,7 +5,7 @@
+   countPanes,
+   findPaneByThread,
+   MAX_PANES,
+-  replacePaneContent,
++  openContentInUnlockedPane,
+   setFocus,
+   splitPane,
+   type PaneContent,
+@@ -55,7 +55,7 @@
+   const content: PaneContent = { kind: "thread", projectId, threadId };
+   const next =
+     decision.zone === "center"
+-      ? replacePaneContent(layout, layout.focusedPaneId, content)
++      ? openContentInUnlockedPane(layout, content)
+       : splitPane(layout, layout.focusedPaneId, "right", content);
+   if (next !== layout) {
+     store.set(splitLayoutAtom, next);
+--- a/apps/app/src/lib/split-layout/ops.ts
++++ b/apps/app/src/lib/split-layout/ops.ts
+@@ -120,6 +120,23 @@
+   return side === "left" || side === "right" ? "row" : "col";
+ }
+ 
++function sizesAfterChangingChildren(
++  split: SplitNode,
++  children: LayoutNode[],
++): number[] {
++  const fixedSizes = children.map((child) => {
++    const index = split.children.indexOf(child);
++    return index !== -1 && listPanes(child).some((pane) => pane.locked)
++      ? (split.sizes[index] ?? 0)
++      : null;
++  });
++  const flexibleCount = fixedSizes.filter((size) => size === null).length;
++  const fixedTotal = fixedSizes.reduce<number>((sum, size) => sum + (size ?? 0), 0);
++  if (flexibleCount === 0 || fixedTotal >= 1) return equalSizes(children.length);
++  const flexibleSize = (1 - fixedTotal) / flexibleCount;
++  return fixedSizes.map((size) => size ?? flexibleSize);
++}
++
+ function insertPane(
+   root: LayoutNode,
+   targetPaneId: string,
+@@ -150,7 +167,7 @@
+         : directTargetIndex + 1;
+     const children = [...root.children];
+     children.splice(insertionIndex, 0, pane);
+-    return { ...root, children, sizes: equalSizes(children.length) };
++    return { ...root, children, sizes: sizesAfterChangingChildren(root, children) };
+   }
+ 
+   const targetChildIndex = root.children.findIndex(
+@@ -198,13 +215,50 @@
+   content: PaneContent,
+ ): SplitLayout {
+   const pane = findPane(layout.root, paneId);
+-  if (pane === null) {
++  if (
++    pane === null ||
++    (pane.locked && findPaneByContent(layout.root, content)?.paneId !== paneId)
++  ) {
+     return layout;
+   }
+   return {
+     root: replacePaneNode(layout.root, paneId, { ...pane, content }),
+     focusedPaneId: paneId,
+   };
++}
++
++export function setPaneLocked(
++  layout: SplitLayout,
++  paneId: string,
++  locked: boolean,
++): SplitLayout {
++  const pane = findPane(layout.root, paneId);
++  if (pane === null || Boolean(pane.locked) === locked) return layout;
++  const { locked: previous, ...unlocked } = pane;
++  return {
++    ...layout,
++    root: replacePaneNode(
++      layout.root,
++      paneId,
++      locked ? { ...pane, locked: true } : unlocked,
++    ),
++  };
++}
++
++export function openContentInUnlockedPane(
++  layout: SplitLayout,
++  content: PaneContent,
++): SplitLayout {
++  const focused = findPane(layout.root, layout.focusedPaneId);
++  if (!focused?.locked)
++    return replacePaneContent(layout, layout.focusedPaneId, content);
++  return splitPane(layout, layout.focusedPaneId, "right", content);
++}
++
++export function canMaximizePane(layout: SplitLayout, paneId: string): boolean {
++  return !listPanes(layout.root).some(
++    (pane) => pane.locked && pane.paneId !== paneId,
++  );
+ }
+ 
+ interface DetachResult {
+@@ -239,7 +293,7 @@
+         node: {
+           ...node,
+           children,
+-          sizes: equalSizes(children.length),
++          sizes: sizesAfterChangingChildren(node, children),
+         },
+         detached: result.detached,
+       };
+@@ -260,7 +314,11 @@
+ export function removePane(layout: SplitLayout, paneId: string): SplitLayout {
+   const panesBefore = listPanes(layout.root);
+   const removedIndex = panesBefore.findIndex((pane) => pane.paneId === paneId);
+-  if (panesBefore.length === 1 || removedIndex === -1) {
++  if (
++    panesBefore.length === 1 ||
++    removedIndex === -1 ||
++    panesBefore[removedIndex]?.locked
++  ) {
+     return layout;
+   }
+   const result = detachPane(layout.root, paneId);
+@@ -288,6 +346,8 @@
+   if (
+     paneId === targetPaneId ||
+     findPane(layout.root, paneId) === null ||
++    findPane(layout.root, paneId)?.locked ||
++    findPane(layout.root, targetPaneId)?.locked ||
+     findPane(layout.root, targetPaneId) === null
+   ) {
+     return layout;
+@@ -312,7 +372,12 @@
+   }
+   const pane = findPane(layout.root, paneId);
+   const targetPane = findPane(layout.root, targetPaneId);
+-  if (pane === null || targetPane === null) {
++  if (
++    pane === null ||
++    targetPane === null ||
++    pane.locked ||
++    targetPane.locked
++  ) {
+     return layout;
+   }
+   const withFirstSwap = replacePaneNode(layout.root, paneId, {
+--- a/apps/app/src/lib/split-layout/persistence.ts
++++ b/apps/app/src/lib/split-layout/persistence.ts
+@@ -35,6 +35,7 @@
+     type: z.literal("pane"),
+     paneId: z.string().min(1),
+     content: paneContentSchema,
++    locked: z.literal(true).optional(),
+   })
+   .strict();
+ 
+--- a/apps/app/src/lib/split-layout/types.ts
++++ b/apps/app/src/lib/split-layout/types.ts
+@@ -22,6 +22,7 @@
+   type: "pane";
+   paneId: string;
+   content: PaneContent;
++  locked?: true;
+ }
+ 
+ export interface SplitNode {
+--- a/apps/app/src/views/SplitWorkspaceRoute.tsx
++++ b/apps/app/src/views/SplitWorkspaceRoute.tsx
+@@ -11,6 +11,7 @@
+   PLUGIN_DETAIL_ROUTE_PATH,
+   PLUGIN_PANEL_ROUTE_PATH,
+ } from "@/lib/route-paths";
++import { listPanes } from "@/lib/split-layout";
+ import type { PaneContent } from "@/lib/split-layout";
+ import { useRouteState } from "@/hooks/useRouteState";
+ import { LegacyProjectComposeRedirect } from "./RootComposeView";
+@@ -82,7 +83,8 @@
+   }
+   if (
+     routeContent.kind === "plugin-detail" &&
+-    !holdsPluginDetailPane(layout, routeContent.pluginId)
++    !holdsPluginDetailPane(layout, routeContent.pluginId) &&
++    !(layout && listPanes(layout.root).some((pane) => pane.locked))
+   ) {
+     return <PluginsView pluginId={routeContent.pluginId} />;
+   }
+--- a/apps/app/src/views/thread-detail/SplitThreadArea.tsx
++++ b/apps/app/src/views/thread-detail/SplitThreadArea.tsx
+@@ -1,3 +1,4 @@
++import { toast } from "sonner";
+ import { cn } from "@bb/shared-ui/lib/utils";
+ import { PANE_FOCUS_APP_COMMAND_IDS } from "@bb/domain";
+ import { useAtom, useAtomValue, useStore } from "jotai";
+@@ -35,10 +36,13 @@
+   computePaneRects,
+   countPanes,
+   findPane,
++  findPaneByContent,
+   listPanes,
+   movePane,
+   removePane,
+-  replacePaneContent,
++  setPaneLocked,
++  canMaximizePane,
++  openContentInUnlockedPane,
+   resizeSplit,
+   setFocus,
+   swapPanes,
+@@ -113,6 +117,7 @@
+   CONTEXT_INACTIVE_TEXT_CLASS,
+   CONTEXT_SELECTION_SURFACE_CLASS,
+ } from "@/components/ui/context-selection";
++import { PaneLockButton } from "./PaneLockButton";
+ import { PaneMaximizeButton } from "./PaneMaximizeButton";
+ import { wsManager } from "@/lib/ws";
+ import { PluginDetailOpenerBoundary } from "@/components/plugin/plugin-detail-opener";
+@@ -294,10 +299,15 @@
+     if (currentContent === null) {
+       return;
+     }
+-    setLayout((previous) =>
+-      reconcileLayoutForContent(previous, currentContent),
+-    );
+-  }, [currentContent, setLayout]);
++    const previous = store.get(splitLayoutAtom);
++    const next = reconcileLayoutForContent(previous, currentContent);
++    if (next !== previous) setLayout(next);
++    if (findPaneByContent(next.root, currentContent) === null) {
++      toast.info("Unlock a pane before opening another section");
++      const route = focusedPaneRoute(next);
++      if (route !== null) navigate(route, { replace: true });
++    }
++  }, [currentContent, navigate, setLayout, store]);
+ 
+   const layout: SplitLayout | null =
+     storedLayout ??
+@@ -316,7 +326,8 @@
+     layout !== null &&
+     countPanes(layout.root) > 1 &&
+     maximizedPaneId !== null &&
+-    maximizedPane !== null
++    maximizedPane !== null &&
++    canMaximizePane(layout, maximizedPaneId)
+       ? maximizedPaneId
+       : null;
+   const {
+@@ -367,7 +378,8 @@
+     if (
+       layout === null ||
+       countPanes(layout.root) < 2 ||
+-      maximizedPane === null
++      maximizedPane === null ||
++      !canMaximizePane(layout, maximizedPaneId)
+     ) {
+       setMaximizedPaneId(null);
+       return;
+@@ -382,7 +394,10 @@
+       setLayout((previous) =>
+         previous === null
+           ? previous
+-          : replacePaneContent(previous, paneId, threadPaneContent(thread)),
++          : openContentInUnlockedPane(
++              setFocus(previous, paneId),
++              threadPaneContent(thread),
++            ),
+       );
+       navigate(getThreadRoutePath(thread));
+     },
+@@ -433,7 +448,12 @@
+     (paneId: string) => {
+       const current = store.get(splitLayoutAtom);
+       const pane = current === null ? null : findPane(current.root, paneId);
+-      if (current === null || countPanes(current.root) < 2 || pane === null) {
++      if (
++        current === null ||
++        countPanes(current.root) < 2 ||
++        pane === null ||
++        !canMaximizePane(current, paneId)
++      ) {
+         return;
+       }
+       if (current.focusedPaneId !== paneId) {
+@@ -502,7 +522,7 @@
+       if (current === null) {
+         return;
+       }
+-      const next = removePane(current, paneId);
++      const next = removePane(setPaneLocked(current, paneId, false), paneId);
+       if (next === current) {
+         return;
+       }
+@@ -523,7 +543,11 @@
+   const beginPaneDrag = useCallback<BeginPaneDrag>(
+     (paneId, event, label) => {
+       const startLayout = store.get(splitLayoutAtom);
+-      if (startLayout === null || countPanes(startLayout.root) < 2) {
++      if (
++        startLayout === null ||
++        countPanes(startLayout.root) < 2 ||
++        findPane(startLayout.root, paneId)?.locked
++      ) {
+         return;
+       }
+       const restoreMaximizeAfterDrag =
+@@ -757,6 +781,7 @@
+         )}
+         data-split-pane-id={node.paneId}
+         data-focused={isFocused ? "true" : "false"}
++        data-locked={node.locked ? "true" : undefined}
+         data-maximized={isMaximized ? "true" : undefined}
+       >
+         {node.content.kind === "thread" ? (
+@@ -772,10 +797,16 @@
+           isSplitPane
+           secondaryPanelRegistry={props.secondaryPanelRegistry}
+           reservesWindowPanelToggle={isMaximized || (isTopRow && isRightEdge)}
+-          onRequestClose={() => props.onClosePane(node.paneId)}
++          onRequestClose={
++            node.locked ? null : () => props.onClosePane(node.paneId)
++          }
+           isMaximized={isMaximized}
+           onToggleMaximize={() => props.onToggleMaximizePane(node.paneId)}
+-          onMoveToSide={(side) => props.onMovePaneToSide(node.paneId, side)}
++          onMoveToSide={
++            node.locked
++              ? undefined
++              : (side) => props.onMovePaneToSide(node.paneId, side)
++          }
+           isBoundedPane
+           isTopRow={isMaximized || isTopRow}
+           ownsWindowTopLeft={
+@@ -1084,6 +1115,7 @@
+           subPath={content.kind === "plugin-panel" ? content.subPath : ""}
+         />
+       ) : null}
++      <PaneLockButton />
+       <PaneMaximizeButton />
+       {onRequestClose ? (
+         <Button
+@@ -1119,51 +1151,56 @@
+         !isBoundedPane && content.kind === "new-thread" && "-m-4 md:-m-5",
+       )}
+     >
+-      {isBoundedPane || panel ? (
++      {isBoundedPane ||
++      panel ||
++      content.kind === "new-thread" ||
++      content.kind === "plugin-detail" ? (
+         <AppPageHeader
+           isWindowDragRegion={isTopRow}
+           ownsWindowTopLeft={ownsWindowTopLeft}
+           className={isBoundedPane ? "z-[21]" : undefined}
+           center={
+-            <div
+-              data-pane-header-focus-tab={
+-                isBoundedPane && isFocused ? "" : undefined
+-              }
+-              className={cn(
+-                "relative flex min-w-0 flex-1 items-center",
+-                isBoundedPane && "-my-1 -ml-2 rounded-md px-2 py-1",
+-                isBoundedPane && isFocused && CONTEXT_SELECTION_SURFACE_CLASS,
+-                beginPaneDrag &&
+-                  cn(
+-                    "cursor-grab touch-none select-none",
+-                    usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
+-                  ),
+-              )}
+-              onPointerDown={beginPaneDrag ? handlePointerDown : undefined}
+-            >
+-              {automationBreadcrumbs ? (
+-                <AppBreadcrumbs
+-                  breadcrumbs={automationBreadcrumbs}
+-                  usesDesktopChrome={usesDesktopChrome}
+-                />
+-              ) : panelChrome ? (
+-                <PluginPanelHeaderCenter chrome={panelChrome} />
+-              ) : (
+-                <p
+-                  className={cn(
+-                    "relative truncate text-sm font-normal transition-colors",
+-                    isBoundedPane &&
+-                      !isFocused &&
+-                      dimsInactiveSplits &&
+-                      CONTEXT_INACTIVE_TEXT_CLASS,
+-                  )}
+-                >
+-                  {content.kind === "plugin-detail"
+-                    ? "Extension"
+-                    : "New thread"}
+-                </p>
+-              )}
+-            </div>
++            <>
++              <div
++                data-pane-header-focus-tab={
++                  isBoundedPane && isFocused ? "" : undefined
++                }
++                className={cn(
++                  "relative flex min-w-0 flex-1 items-center",
++                  isBoundedPane && "-my-1 -ml-2 rounded-md px-2 py-1",
++                  isBoundedPane && isFocused && CONTEXT_SELECTION_SURFACE_CLASS,
++                  beginPaneDrag &&
++                    cn(
++                      "cursor-grab touch-none select-none",
++                      usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
++                    ),
++                )}
++                onPointerDown={beginPaneDrag ? handlePointerDown : undefined}
++              >
++                {automationBreadcrumbs ? (
++                  <AppBreadcrumbs
++                    breadcrumbs={automationBreadcrumbs}
++                    usesDesktopChrome={usesDesktopChrome}
++                  />
++                ) : panelChrome ? (
++                  <PluginPanelHeaderCenter chrome={panelChrome} />
++                ) : (
++                  <p
++                    className={cn(
++                      "relative truncate text-sm font-normal transition-colors",
++                      isBoundedPane &&
++                        !isFocused &&
++                        dimsInactiveSplits &&
++                        CONTEXT_INACTIVE_TEXT_CLASS,
++                    )}
++                  >
++                    {content.kind === "plugin-detail"
++                      ? "Extension"
++                      : "New thread"}
++                  </p>
++                )}
++              </div>
++            </>
+           }
+           actions={actions}
+         />
+--- a/apps/app/src/views/thread-detail/SplitWorkspaceSecondaryPanelHost.tsx
++++ b/apps/app/src/views/thread-detail/SplitWorkspaceSecondaryPanelHost.tsx
+@@ -1,3 +1,5 @@
++import { splitLayoutAtom } from "@/lib/split-layout/atoms";
++import { listPanes } from "@/lib/split-layout";
+ import {
+   useCallback,
+   useEffect,
+@@ -65,6 +67,10 @@
+   registry,
+ }: SplitWorkspaceSecondaryPanelHostProps) {
+   const model = usePaneSecondaryPanelModel(registry, focusedPaneId);
++  const layout = useAtomValue(splitLayoutAtom);
++  const hasLockedPanes =
++    layout !== null && listPanes(layout.root).some((pane) => pane.locked);
++  const isMainCollapsed = Boolean(model?.isMainCollapsed) && !hasLockedPanes;
+   const panelGroupRef = useRef<ImperativePanelGroupHandle | null>(null);
+   const panelWidthPercent = useAtomValue(secondaryPanelWidthPercentAtom);
+   const shortcut = useAppCommandShortcut("panel.toggle");
+@@ -117,7 +123,7 @@
+       group.setLayout([MAIN_PANEL_OPEN_SIZE_PERCENT, 0]);
+       return;
+     }
+-    if (model?.isMainCollapsed) {
++    if (isMainCollapsed) {
+       group.setLayout([0, MAIN_PANEL_OPEN_SIZE_PERCENT]);
+       return;
+     }
+@@ -129,7 +135,7 @@
+     focusedPaneId,
+     isOpen,
+     isPaneMaximized,
+-    model?.isMainCollapsed,
++    isMainCollapsed,
+     panelWidthPercent,
+   ]);
+ 
+@@ -225,12 +231,12 @@
+         >
+           <Panel
+             id="split-workspace-main-panel"
+-            collapsible
++            collapsible={!hasLockedPanes}
+             collapsedSize={0}
+             defaultSize={
+               isPaneMaximized
+                 ? MAIN_PANEL_OPEN_SIZE_PERCENT
+-                : model?.isMainCollapsed
++                : isMainCollapsed
+                   ? 0
+                   : isOpen
+                     ? MAIN_PANEL_OPEN_SIZE_PERCENT - panelWidthPercent
+--- a/apps/app/src/views/thread-detail/splitThreadNavigation.ts
++++ b/apps/app/src/views/thread-detail/splitThreadNavigation.ts
+@@ -2,6 +2,9 @@
+ import type { ThreadOpenSplit, ThreadPaneAction } from "@bb/server-contract";
+ import {
+   countPanes,
++  openContentInUnlockedPane,
++  setPaneLocked,
++  canMaximizePane,
+   findPane,
+   findPaneByContent,
+   findPaneByThread,
+@@ -121,7 +124,7 @@
+       ? withRouteState
+       : setFocus(withRouteState, existing.paneId);
+   }
+-  return replacePaneContent(layout, layout.focusedPaneId, content);
++  return openContentInUnlockedPane(layout, content);
+ }
+ 
+ export function focusedPaneRoute(layout: SplitLayout): string | null {
+@@ -158,7 +161,7 @@
+   }
+   const content = threadPaneContent(thread);
+   return decision.zone === "center"
+-    ? replacePaneContent(layout, layout.focusedPaneId, content)
++    ? openContentInUnlockedPane(layout, content)
+     : splitPane(layout, layout.focusedPaneId, decision.zone, content);
+ }
+ 
+@@ -175,7 +178,17 @@
+   action: ThreadPaneAction,
+ ): ThreadPaneActionLayoutResult {
+   const pane = findPaneByThread(layout.root, thread.projectId, thread.threadId);
+-  if (pane === null || countPanes(layout.root) < 2) {
++  if (pane === null) {
++    return { layout, maximizedPaneId, dimInactiveSplits: null };
++  }
++  if (action === "lock" || action === "unlock") {
++    return {
++      layout: setPaneLocked(layout, pane.paneId, action === "lock"),
++      maximizedPaneId: null,
++      dimInactiveSplits: null,
++    };
++  }
++  if (countPanes(layout.root) < 2) {
+     return { layout, maximizedPaneId, dimInactiveSplits: null };
+   }
+   if (action === "spotlight" || action === "clear-spotlight") {
+@@ -198,6 +211,8 @@
+   if (action === "toggle" && maximizedPaneId === pane.paneId) {
+     return { layout, maximizedPaneId: null, dimInactiveSplits: null };
+   }
++  if (!canMaximizePane(layout, pane.paneId))
++    return { layout, maximizedPaneId: null, dimInactiveSplits: null };
+   return {
+     layout:
+       layout.focusedPaneId === pane.paneId
+--- a/packages/plugin-sdk/src/app-contract.ts
++++ b/packages/plugin-sdk/src/app-contract.ts
+@@ -2461,6 +2461,8 @@
+ 
+ /** Surface-aware controller for selecting owner-scoped fixed tabs. */
+ export interface ExperimentalAppPanel {
++  /** Lock the calling component's workspace pane. Returns false outside a desktop workspace pane. */
++  experimental_setPaneLocked(locked: boolean): boolean;
+   openFixedTab<Target extends JsonValue = never>(
+     options: ExperimentalOpenFixedTabOptions<Target>,
+   ): boolean;
+--- a/packages/plugin-sdk/src/testing/app.tsx
++++ b/packages/plugin-sdk/src/testing/app.tsx
+@@ -1419,6 +1419,7 @@
+     },
+   };
+   const appPanel: ExperimentalAppPanel = {
++    experimental_setPaneLocked: () => false,
+     openFixedTab(panelOptions) {
+       let target: JsonValue | undefined;
+       if (panelOptions.target !== undefined) {
+--- a/packages/server-contract/src/api/threads.ts
++++ b/packages/server-contract/src/api/threads.ts
+@@ -709,6 +709,8 @@
+ export type ThreadOpenResponse = z.infer<typeof threadOpenResponseSchema>;
+ 
+ export const threadPaneActionSchema = z.enum([
++  "lock",
++  "unlock",
+   "maximize",
+   "restore",
+   "toggle",
+--- a/docs/api_to_audit.md
++++ b/docs/api_to_audit.md
+@@ -3030,3 +3030,7 @@
+ no provider polling. Validate concurrent resume/removal, failure reporting,
+ long-running caller behavior, and the scope of supported states before
+ stabilizing this API. Exposed as `bb machine reconcile`.
++
++## Workspace pane locking
++
++`ExperimentalAppPanel.experimental_setPaneLocked(boolean)` locks the calling workspace pane and returns false outside a desktop pane. State persists in the tab-local split layout. The lock protects closing, replacement, movement and resizing; internal plugin navigation remains available. Stabilize after reviewing keyboard, compact viewport, persistence, and all-locked capacity behavior.
+--- a/packages/plugin-api-map/src/surfaces.ts
++++ b/packages/plugin-api-map/src/surfaces.ts
+@@ -67,6 +67,19 @@
+         experimental: true,
+       },
+       {
++        id: "pane-lock",
++        title: "Workspace pane locking",
++        summary:
++          "Keeps a workspace pane open while the user navigates other sections.",
++        bullets: [
++          "Lock or unlock the calling pane with experimental_useAppPanel().experimental_setPaneLocked(boolean)",
++          "Returns false outside a desktop workspace pane",
++          "Locks persist with the tab layout and protect closing, replacement, movement, and resize",
++        ],
++        apiSymbols: ["ExperimentalAppPanel", "experimental_useAppPanel"],
++        experimental: true,
++      },
++      {
+         id: "nav-panel",
+         title: "Full-page panels",
+         summary:
+--- a/packages/templates/src/templates/bb-guide-plugins.md
++++ b/packages/templates/src/templates/bb-guide-plugins.md
+@@ -175,7 +175,15 @@
+   bb workflows status <run-id>
+   bb workflows history <run-id> [--cursor <call-index>] [--limit <1-100>]
+   bb workflows list [--limit <1-50>]
++  bb workflows checkpoints <run-id> [--cursor <index>] [--limit <1-10>]
++  bb workflows decide <run-id> --checkpoint <id> --decision <approve|reject> [--comment <text>]
+   bb workflows stop <run-id>
++
++Workflow scripts can `await human(title, detail)` for an explicit human decision
++and `await check(title, booleanVerdict, detail)` for a recorded pass/fail check.
++The run panel provides approval, revision feedback, and check outcomes. Pending
++reviews survive restart; explicit resume asks for a fresh review. CLI decisions
++must run in the origin thread and relay an explicit user choice.
+ 
+ Commands must run from a BB project thread. Workflows has six plugin
+ settings, configurable with `bb plugin config workflows set <key> <value>`:
+--- a/apps/app/src/views/thread-detail/ThreadDetailHeader.tsx
++++ b/apps/app/src/views/thread-detail/ThreadDetailHeader.tsx
+@@ -41,6 +41,7 @@
+   CONTEXT_SELECTION_SURFACE_CLASS,
+ } from "@/components/ui/context-selection";
+ import { usePaneContext } from "./PaneContext";
++import { PaneLockButton } from "./PaneLockButton";
+ import { PaneMaximizeButton } from "./PaneMaximizeButton";
+ import type { ThreadHeaderGitAction } from "./useThreadGitActions";
+ 
+@@ -274,6 +275,7 @@
+             </Button>
+           </span>
+         ) : null}
++        <PaneLockButton />
+         <PaneMaximizeButton />
+         {onClosePane ? (
+           <Button
+--- /dev/null
++++ b/apps/app/src/views/thread-detail/PaneLockButton.tsx
+@@ -0,0 +1,59 @@
++import { useAtomValue, useStore } from "jotai";
++import { Button } from "@bb/shared-ui/button";
++import { Icon } from "@bb/shared-ui/icon";
++import { Tooltip, TooltipContent, TooltipTrigger } from "@bb/shared-ui/tooltip";
++import { HEADER_PANE_ACTION_ICON_BUTTON_CLASS } from "@/components/layout/AppPageHeader";
++import { findPane, setPaneLocked } from "@/lib/split-layout";
++import { splitLayoutAtom, maximizedPaneIdAtom } from "@/lib/split-layout/atoms";
++import { useSplitWorkspaceActive } from "@/hooks/useSplitWorkspaceActive";
++import { CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS } from "@bb/shared-ui/chrome-style-tokens";
++import { cn } from "@bb/shared-ui/lib/utils";
++import { MACOS_WINDOW_NO_DRAG_CLASS } from "@/lib/bb-desktop";
++import { usePaneContext } from "./PaneContext";
++
++export function PaneLockButton() {
++  const { paneId } = usePaneContext();
++  const store = useStore();
++  const layout = useAtomValue(splitLayoutAtom);
++  const active = useSplitWorkspaceActive();
++  const pane = layout === null ? null : findPane(layout.root, paneId);
++  if (!active || pane === null) return null;
++  const locked = Boolean(pane.locked);
++  const label = locked ? "Unlock pane" : "Lock pane";
++  return (
++    <Tooltip>
++      <TooltipTrigger asChild>
++        <Button
++          type="button"
++          variant="ghost"
++          size="icon"
++          className={cn(
++            HEADER_PANE_ACTION_ICON_BUTTON_CLASS,
++            MACOS_WINDOW_NO_DRAG_CLASS,
++            "shrink-0",
++            CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
++          )}
++          data-pane-lock-id={paneId}
++          aria-label={label}
++          aria-pressed={locked}
++          onClick={() => {
++            const current = store.get(splitLayoutAtom);
++            if (current === null) return;
++            const target = findPane(current.root, paneId);
++            if (target === null) return;
++            store.set(
++              splitLayoutAtom,
++              setPaneLocked(current, paneId, !target.locked),
++            );
++            store.set(maximizedPaneIdAtom, null);
++          }}
++        >
++          <Icon name="Lock" />
++        </Button>
++      </TooltipTrigger>
++      <TooltipContent side="bottom">
++        {locked ? "Unlock this pane" : "Lock this pane"}
++      </TooltipContent>
++    </Tooltip>
++  );
++}
+--- /dev/null
++++ b/apps/app/src/lib/split-layout/locking.test.ts
+@@ -0,0 +1,178 @@
++import { describe, expect, it } from "vitest";
++import { createStore } from "jotai";
++import { closePanesForThreadsAtom, splitLayoutAtom } from "./atoms";
++import {
++  canMaximizePane,
++  findPane,
++  listPanes,
++  movePane,
++  removePane,
++  replacePaneContent,
++  resizeSplit,
++  setFocus,
++  setPaneLocked,
++  splitPane,
++  swapPanes,
++  serializeSplitLayout,
++  deserializeSplitLayout,
++  MAX_PANES,
++} from "./index";
++import {
++  applyThreadPaneActionToLayout,
++  reconcileLayoutForContent,
++} from "@/views/thread-detail/splitThreadNavigation";
++import type { PaneContent, SplitLayout } from "./types";
++
++const tasks: PaneContent = {
++  kind: "plugin-panel",
++  pluginId: "tasks",
++  panelPath: "list",
++  subPath: "",
++};
++const thread = {
++  kind: "thread",
++  projectId: "project",
++  threadId: "thread",
++} as const;
++function fixture(): SplitLayout {
++  return setPaneLocked(
++    splitPane(
++      {
++        root: { type: "pane", paneId: "pane-1", content: tasks },
++        focusedPaneId: "pane-1",
++      },
++      "pane-1",
++      "right",
++      thread,
++    ),
++    "pane-1",
++    true,
++  );
++}
++
++describe("workspace pane locks", () => {
++  it("keeps a resized pinned pane stable when neighbors open and close", () => {
++    const before = resizeSplit(fixture(), [], 0, 0.6);
++    const added = splitPane(before, "pane-2", "right", { kind: "new-thread" });
++    expect(added.root).toMatchObject({ sizes: [0.6, 0.2, 0.2] });
++    const restored = deserializeSplitLayout(serializeSplitLayout(added));
++    expect(restored).toEqual(added);
++    expect(removePane(added, "pane-2").root).toMatchObject({ sizes: [0.6, 0.4] });
++    expect(removePane(added, "pane-3").root).toMatchObject({ sizes: [0.6, 0.4] });
++    expect(splitPane(before, "pane-1", "left", { kind: "new-thread" }).root)
++      .toMatchObject({ sizes: [0.2, 0.6, 0.2] });
++  });
++
++  it("preserves a branch containing a pinned pane when siblings change", () => {
++    const before = splitPane(fixture(), "pane-1", "bottom", { kind: "new-thread" });
++    const added = splitPane(before, "pane-2", "right", { kind: "new-thread" });
++    expect(added.root).toMatchObject({ sizes: [0.5, 0.25, 0.25] });
++    expect(removePane(added, "pane-2").root).toMatchObject({ sizes: [0.5, 0.5] });
++  });
++
++  it("preserves the pinned page when navigating from its focused pane", () => {
++    const before = setFocus(fixture(), "pane-1");
++    const next = reconcileLayoutForContent(before, { kind: "new-thread" });
++    expect(findPane(next.root, "pane-1")).toEqual(
++      findPane(before.root, "pane-1"),
++    );
++    expect(findPane(next.root, "pane-2")).toEqual(
++      findPane(before.root, "pane-2"),
++    );
++    expect(listPanes(next.root).map((pane) => pane.content)).toEqual([
++      tasks, { kind: "new-thread" }, thread,
++    ]);
++    expect(next.focusedPaneId).toBe("pane-3");
++  });
++  it("rejects direct closure, replacement, movement and swapping", () => {
++    const layout = fixture();
++    expect(removePane(layout, "pane-1")).toBe(layout);
++    expect(replacePaneContent(layout, "pane-1", thread)).toBe(layout);
++    expect(movePane(layout, "pane-1", "pane-2", "right")).toBe(layout);
++    expect(movePane(layout, "pane-2", "pane-1", "left")).toBe(layout);
++    expect(swapPanes(layout, "pane-1", "pane-2")).toBe(layout);
++
++    expect(canMaximizePane(layout, "pane-2")).toBe(false);
++  });
++  it("resizes adjacent panes while preserving their locks and content", () => {
++    const layout = setPaneLocked(fixture(), "pane-2", true);
++    const next = resizeSplit(layout, [], 0, 0.7);
++    expect(next.root.type).toBe("split");
++    if (next.root.type !== "split") throw new Error("Expected split");
++    expect(next.root.sizes).toEqual([0.7, 0.30000000000000004]);
++    expect(findPane(next.root, "pane-1")).toEqual(
++      findPane(layout.root, "pane-1"),
++    );
++    expect(findPane(next.root, "pane-2")).toEqual(
++      findPane(layout.root, "pane-2"),
++    );
++  });
++  it("allows internal page navigation without dropping the lock", () => {
++    const next = reconcileLayoutForContent(fixture(), {
++      ...tasks,
++      subPath: "item/12",
++    });
++    expect(findPane(next.root, "pane-1")).toMatchObject({
++      locked: true,
++      content: { subPath: "item/12" },
++    });
++  });
++  it("persists locks, accepts old layouts, and restores actions after unlocking", () => {
++    const layout = fixture();
++    expect(deserializeSplitLayout(serializeSplitLayout(layout))).toEqual(
++      layout,
++    );
++    const unlocked = setPaneLocked(layout, "pane-1", false);
++    expect(deserializeSplitLayout(serializeSplitLayout(unlocked))).toEqual(
++      unlocked,
++    );
++    expect(removePane(unlocked, "pane-1")).not.toBe(unlocked);
++    expect(replacePaneContent(unlocked, "pane-1", thread)).not.toBe(unlocked);
++  });
++  it("opens a neighbor if all panes are locked and preserves them at capacity", () => {
++    let layout = setPaneLocked(fixture(), "pane-2", true);
++    for (let i = 3; i <= MAX_PANES; i++) {
++      layout = reconcileLayoutForContent(layout, {
++        ...thread,
++        threadId: `thread-${i}`,
++      });
++      layout = setPaneLocked(layout, layout.focusedPaneId, true);
++    }
++    expect(listPanes(layout.root)).toHaveLength(MAX_PANES);
++    expect(reconcileLayoutForContent(layout, { kind: "new-thread" })).toBe(
++      layout,
++    );
++  });
++  it("protects locks from maximize signals and accepts explicit unlock signals", () => {
++    const layout = fixture();
++    const route = { projectId: "project", threadId: "thread" } as const;
++    expect(
++      applyThreadPaneActionToLayout(layout, null, route, "maximize")
++        .maximizedPaneId,
++    ).toBeNull();
++    const locked = applyThreadPaneActionToLayout(
++      layout,
++      null,
++      route,
++      "lock",
++    ).layout;
++    expect(findPane(locked.root, "pane-2")?.locked).toBe(true);
++    expect(
++      findPane(
++        applyThreadPaneActionToLayout(locked, null, route, "unlock").layout
++          .root,
++        "pane-2",
++      )?.locked,
++    ).toBeUndefined();
++  });
++  it("keeps pinned plugin pages when a neighboring thread is archived", () => {
++    const store = createStore();
++    store.set(splitLayoutAtom, fixture());
++    store.set(closePanesForThreadsAtom, ["thread"]);
++    expect(store.get(splitLayoutAtom)?.root).toMatchObject({
++      paneId: "pane-1",
++      locked: true,
++      content: tasks,
++    });
++  });
++});

@@ -30,6 +30,34 @@
     {
       "name": "usage-limits",
       "source": "./plugins/usage-limits"
+    },
+    {
+      "name": "fast-archive",
+      "source": "./plugins/fast-archive"
+    },
+    {
+      "name": "visual-workflows",
+      "source": "./plugins/visual-workflows"
+    },
+    {
+      "name": "jev-bb",
+      "source": "./plugins/jev-bb"
+    },
+    {
+      "name": "usage-bar",
+      "source": "./plugins/usage-bar"
+    },
+    {
+      "name": "sidebar-subtitles",
+      "source": "./plugins/sidebar-subtitles"
+    },
+    {
+      "name": "fast-split",
+      "source": "./plugins/fast-split"
+    },
+    {
+      "name": "lock-area",
+      "source": "./plugins/lock-area"
     }
   ]
 }

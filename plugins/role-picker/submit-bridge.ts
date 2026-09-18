@@ -20,7 +20,7 @@ export function matches(selection: Selection, threadId: string | null, body: Rec
 }
 export function decorate(body: Record<string, unknown>, prepared: Prepared, isNew: boolean): Record<string, unknown> {
   return { ...body,
-    ...(isNew ? { origin: 'plugin', originPluginId: 'agent-roles', pluginMetadata: prepared.metadata } : {}),
+    ...(isNew ? { origin: 'plugin', originPluginId: 'role-picker', pluginMetadata: prepared.metadata } : {}),
     input: [...body.input as unknown[], { type: 'text', text: prepared.context, mentions: [], visibility: 'agent-only' }],
   };
 }

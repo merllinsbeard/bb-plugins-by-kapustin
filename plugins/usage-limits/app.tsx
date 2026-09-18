@@ -51,33 +51,6 @@ const FOOTER_SELECTOR = 'div[data-sidebar="footer"]';
 // ---------------------------------------------------------------------------
 
 function mountBarHost({ signal }: { signal: AbortSignal }) {
-  const host = document.createElement("div");
-  host.id = BAR_HOST_ID;
-  host.style.minWidth = "0";
-
-  const attach = () => {
-    if (signal.aborted) return;
-    const footer = document.querySelector(FOOTER_SELECTOR);
-    if (footer === null) {
-      host.remove();
-      setBarHost(null);
-      return;
-    }
-    const collapsed =
-      footer.closest('[data-state="collapsed"]') !== null ||
-      footer.getBoundingClientRect().width < 120;
-    host.style.display = collapsed ? "none" : "block";
-    if (host.parentElement !== footer || footer.firstChild !== host) {
-      footer.insertBefore(host, footer.firstChild);
-    }
-    setBarHost(host);
-  };
-  attach();
-  const observer = new MutationObserver(attach);
-  observer.observe(document.body, { childList: true, subtree: true });
-  const resize = new ResizeObserver(attach);
-  resize.observe(document.body);
-
   let timer: number | null = null;
   const schedule = () => {
     if (timer !== null) window.clearTimeout(timer);
@@ -98,13 +71,9 @@ function mountBarHost({ signal }: { signal: AbortSignal }) {
   schedule();
 
   return () => {
-    observer.disconnect();
-    resize.disconnect();
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("focus", onVisibility);
     if (timer !== null) window.clearTimeout(timer);
-    setBarHost(null);
-    host.remove();
   };
 }
 
@@ -200,7 +169,7 @@ function useTokenTotals() {
       } catch {
         if (!controller.signal.aborted) setTokens((prior) => ({
           day: 0, month: 0, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          fetchedAt: null, ...prior, error: "Не удалось обновить расход токенов",
+          fetchedAt: null, ...prior, error: "Could not refresh token usage",
         }));
       } finally { pending = false; }
     };
@@ -237,7 +206,7 @@ function UsageBar({ tokens }: { tokens: TokenTotals | null }) {
     <button
       type="button"
       onClick={open}
-      aria-label="Лимиты и расход токенов BB. Открыть подробности."
+      aria-label="BB usage limits and token usage. Open details."
       title="Usage limits — click for details"
       className="mb-1 flex w-full min-w-0 cursor-pointer items-center justify-start gap-2 flex-wrap rounded-md px-1.5 py-1 text-[11px] leading-none text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
     >
@@ -267,9 +236,9 @@ function UsageBar({ tokens }: { tokens: TokenTotals | null }) {
           );
         })
       )}
-      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap tabular-nums" title={tokens?.fetchedAt ? `Токены по всему BB: сегодня ${tokens.day.toLocaleString("ru-RU")}, месяц ${tokens.month.toLocaleString("ru-RU")}. ${tokens.timeZone}${tokens.error ? `. ${tokens.error}` : ""}` : tokens?.error ?? "Загрузка расхода токенов"}>
+      <span className="flex shrink-0 items-center gap-1 whitespace-nowrap tabular-nums" title={tokens?.fetchedAt ? `Tokens across BB: today ${tokens.day.toLocaleString("en-US")}, month ${tokens.month.toLocaleString("en-US")}. ${tokens.timeZone}${tokens.error ? `. ${tokens.error}` : ""}` : tokens?.error ?? "Loading token usage"}>
         <span aria-hidden="true" className="font-semibold">Σ</span>
-        {tokens?.fetchedAt ? <span>{compactTokens(tokens.day)}<span className="text-muted-foreground"> д / </span>{compactTokens(tokens.month)}<span className="text-muted-foreground"> мес</span>{tokens.error ? " ⚠" : ""}</span> : <span className="text-muted-foreground">{tokens?.error ? "—" : "…"}</span>}
+        {tokens?.fetchedAt ? <span>{compactTokens(tokens.day)}<span className="text-muted-foreground"> today / </span>{compactTokens(tokens.month)}<span className="text-muted-foreground"> month</span>{tokens.error ? " ⚠" : ""}</span> : <span className="text-muted-foreground">{tokens?.error ? "—" : "…"}</span>}
       </span>
     </button>
   );
@@ -403,14 +372,14 @@ function UsageDialog({ tokens }: { tokens: TokenTotals | null }) {
           </DialogDescription>
         </DialogHeader>
         <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto">
-          <section className="rounded-lg border p-3" aria-label="Расход токенов по всему BB">
-            <h3 className="text-sm font-semibold">Токены · весь BB</h3>
+          <section className="rounded-lg border p-3" aria-label="Token usage across BB">
+            <h3 className="text-sm font-semibold">Tokens · across BB</h3>
             <dl className="mt-2 grid grid-cols-2 gap-3 text-sm tabular-nums">
-              <div><dt className="text-muted-foreground">Сегодня</dt><dd className="font-semibold">{tokens?.fetchedAt ? tokens.day.toLocaleString("ru-RU") : "—"}</dd></div>
-              <div><dt className="text-muted-foreground">Этот месяц</dt><dd className="font-semibold">{tokens?.fetchedAt ? tokens.month.toLocaleString("ru-RU") : "—"}</dd></div>
+              <div><dt className="text-muted-foreground">Today</dt><dd className="font-semibold">{tokens?.fetchedAt ? tokens.day.toLocaleString("en-US") : "—"}</dd></div>
+              <div><dt className="text-muted-foreground">This month</dt><dd className="font-semibold">{tokens?.fetchedAt ? tokens.month.toLocaleString("en-US") : "—"}</dd></div>
             </dl>
-            <p className="mt-2 text-[11px] text-muted-foreground">Все проекты, архивные чаты и скрытые агенты. Учтён расход, который провайдеры передали в историю BB. Кэш и reasoning повторно не прибавляются.</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">{tokens?.timeZone ?? ""}{tokens?.fetchedAt ? ` · Обновлено ${new Date(tokens.fetchedAt).toLocaleTimeString()}` : " · Загрузка…"}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">All projects, archived threads, and hidden agents. Includes usage reported by providers to BB. Cache and reasoning tokens are not counted again.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{tokens?.timeZone ?? ""}{tokens?.fetchedAt ? ` · Updated ${new Date(tokens.fetchedAt).toLocaleTimeString()}` : " · Loading…"}</p>
             {tokens?.error ? <p role="status" className="mt-1 text-xs text-muted-foreground">{tokens.error}</p> : null}
           </section>
           {providers.length === 0 ? (
@@ -445,10 +414,9 @@ function UsageDialog({ tokens }: { tokens: TokenTotals | null }) {
 /** Always-mounted overlay: portals the bar into the footer + owns the dialog. */
 function UsageOverlay() {
   const tokens = useTokenTotals();
-  const host = useSyncExternalStore(subscribeBarHost, getBarHost);
   return (
     <>
-      {host === null ? null : createPortal(<UsageBar tokens={tokens} />, host)}
+
       <UsageDialog tokens={tokens} />
     </>
   );

@@ -227,6 +227,7 @@ const syncReportSchema = z.object({
   problems: z.array(z.string()),
 });
 const syncStatusSchema = z.object({
+  enabled: z.boolean(),
   agentsDir: z.string(),
   running: z.boolean(),
   last: syncReportSchema.nullable(),
@@ -1141,12 +1142,16 @@ export default async function plugin(bb: BbPluginApi) {
       return { roleSlug: role.slug, roleName: role.name, description: role.description, color: role.color, instructions: role.instructions, taskKey };
     },
     sync_run: () => syncNow(),
-    sync_status: async () => ({
-      agentsDir: resolveAgentsDir(String((await settings.get()).agentsDir ?? "")),
-      running: syncRunning,
-      last: lastSync,
-      entries: syncStore.all().map((s) => ({ slug: s.slug, presetId: s.presetId, syncedAt: s.syncedAt })),
-    }),
+    sync_status: async () => {
+      const current = await settings.get();
+      return {
+        enabled: current.syncEnabled,
+        agentsDir: current.syncEnabled ? resolveAgentsDir(String(current.agentsDir ?? "")) : "",
+        running: syncRunning,
+        last: lastSync,
+        entries: syncStore.all().map((s) => ({ slug: s.slug, presetId: s.presetId, syncedAt: s.syncedAt })),
+      };
+    },
   });
 
   // ------------------------------------------------------------------ agent instructions

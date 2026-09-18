@@ -3,7 +3,7 @@
   "displayName": "Autopilots",
   "description": "Organize scheduled work into folders and control groups together. Inspect run history, errors and agent transcripts. Requires the bundled Automations plugin; agent runs use provider quota.",
   "icon": {
-    "url": "./icons/automation-groups-3b821211.svg"
+    "url": "./icons/automation-groups-0a50ad60.png"
   },
   "tags": [
     "scheduling",
@@ -26,6 +26,7 @@
   },
   "overview": "./overview/automation-groups.md",
   "screenshots": [
-    "./screenshots/automation-groups/overview.png"
+    "./screenshots/automation-groups/overview.png",
+    "./screenshots/automation-groups/history.png"
   ]
 }

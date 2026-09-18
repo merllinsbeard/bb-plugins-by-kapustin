@@ -7,7 +7,7 @@ import {
 import plugin from "./server.ts";
 
 const setup = async (
-  callHost = async () => ({ answer: "Готово", suggestions: ["Дочерний шаг"] }),
+  callHost = async () => ({ answer: "Done", suggestions: ["Child step"] }),
 ) => {
   const h = createFakePluginHost({
     pluginId: "my-tasks",
@@ -30,7 +30,7 @@ test("concurrent additions, partial updates and reload preserve user data", asyn
     const tasks = await Promise.all(
       Array.from({ length: 20 }, (_, i) =>
         harness.behavior.callRpc("add", {
-          title: `Задача ${i}`,
+          title: `Task ${i}`,
           sectionId: null,
         }),
       ),
@@ -40,9 +40,9 @@ test("concurrent additions, partial updates and reload preserve user data", asyn
     await Promise.all([
       harness.behavior.callRpc("patch", {
         id,
-        changes: { notes: "Важные мысли" },
+        changes: { notes: "Important notes" },
       }),
-      harness.behavior.callRpc("stepAdd", { id, title: "Первый шаг" }),
+      harness.behavior.callRpc("stepAdd", { id, title: "First step" }),
     ]);
     await harness.behavior.callRpc("patch", { id, changes: { deleted: true } });
     ({ harness } = await harness.lifecycle.reload(plugin));
@@ -53,7 +53,7 @@ test("concurrent additions, partial updates and reload preserve user data", asyn
     const t = (await harness.behavior.callRpc("list", null)).find(
       (t) => t.id === id,
     );
-    assert.equal(t.notes, "Важные мысли");
+    assert.equal(t.notes, "Important notes");
     assert.equal(t.steps.length, 1);
     assert.equal(t.deleted, false);
   } finally {
@@ -64,13 +64,13 @@ test("proposals remain separate; selected steps applied once; malformed input re
   let { harness } = await setup();
   try {
     const t = await harness.behavior.callRpc("add", {
-      title: "Сделать дело",
+      title: "Get it done",
       sectionId: null,
     });
     const result = await harness.behavior.runCli([
       "propose",
       t.id,
-      JSON.stringify(["Уточнить цель", "Подготовить черновик"]),
+      JSON.stringify(["Clarify the goal", "Prepare a draft"]),
     ]);
     assert.equal(result.exitCode, 0);
     const proposed = JSON.parse(result.stdout);
@@ -117,15 +117,15 @@ test("background job uses Astra low without threads and accepts child suggestion
   const { harness } = await setup(async (c) => {
     calls.push(c);
     await gate;
-    return { answer: "Результат", suggestions: ["Вложенный шаг"] };
+    return { answer: "Result", suggestions: ["Nested step"] };
   });
   const t = await harness.behavior.callRpc("add", {
-    title: "Родитель",
+    title: "Parent",
     sectionId: null,
   });
   const withStep = await harness.behavior.callRpc("stepAdd", {
     id: t.id,
-    title: "Только эта подзадача",
+    title: "Only this subtask",
   });
   const stepId = withStep.steps[0].id;
   const input = inputFor(t.id, stepId);
@@ -142,10 +142,10 @@ test("background job uses Astra low without threads and accepts child suggestion
     await waitFor(() => calls.length === 1);
     assert.equal(calls[0].input.model, "gpt-6-astra");
     assert.equal(calls[0].input.effort, "low");
-    assert.match(calls[0].input.prompt, /ТОЛЬКО над этой подзадачей/);
+    assert.match(calls[0].input.prompt, /ONLY on this subtask/);
     await harness.behavior.callRpc("patch", {
       id: t.id,
-      changes: { notes: "Сохранить параллельное изменение" },
+      changes: { notes: "Preserve the concurrent change" },
     });
     release();
     await waitFor(
@@ -154,7 +154,7 @@ test("background job uses Astra low without threads and accepts child suggestion
         "done",
     );
     let saved = (await harness.behavior.callRpc("list", null))[0];
-    assert.equal(saved.notes, "Сохранить параллельное изменение");
+    assert.equal(saved.notes, "Preserve the concurrent change");
     assert.equal(saved.threads.length, 0);
     assert.equal(saved.suggestions[0].parentId, stepId);
     saved = await harness.behavior.callRpc("accept", {
@@ -188,10 +188,10 @@ test("cancellation suppresses late results", async () => {
   const gate = new Promise((r) => (release = r));
   const { harness } = await setup(async () => {
     await gate;
-    return { answer: "Поздно", suggestions: ["Не добавлять"] };
+    return { answer: "Too late", suggestions: ["Do not add"] };
   });
   const task = await harness.behavior.callRpc("add", {
-    title: "Задача",
+    title: "Task",
     sectionId: null,
   });
   const j = await harness.behavior.callRpc("assist", inputFor(task.id));
@@ -220,7 +220,7 @@ test("failure is shown and queued jobs survive reload", async () => {
     throw new Error("Offline");
   });
   const task = await harness.behavior.callRpc("add", {
-    title: "Задача",
+    title: "Task",
     sectionId: null,
   });
   await harness.behavior.callRpc("assist", inputFor(task.id));

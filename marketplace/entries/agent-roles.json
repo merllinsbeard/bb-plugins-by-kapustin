@@ -1,14 +1,14 @@
 {
   "id": "agent-roles",
   "displayName": "Agent Roles",
-  "description": "Create specialist agents and connect them into visual workflows. Run independent steps in parallel and inspect their results. Uses your configured providers and quotas; optional file synchronization is opt-in.",
+  "description": "Create reusable specialist profiles and start focused agent work. Optional Role Picker and Visual Workflows integrations.",
   "icon": {
-    "url": "./icons/agent-roles-f589abe1.svg"
+    "url": "./icons/agent-roles-af02a11f.png"
   },
   "tags": [
     "specialists",
-    "workflow-editor",
-    "orchestration"
+    "roles",
+    "agents"
   ],
   "author": {
     "name": "Dmitrii Kapustin",

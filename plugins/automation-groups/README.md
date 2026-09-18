@@ -1,45 +1,105 @@
-# bb-plugin-automation-groups
+<img src="../../assets/plugin-icons/automation-groups.png" alt="" width="64" height="64" align="right">
 
-Group BB automations into named, colored folders. One page in the sidebar
-(**Automation groups**) is meant to be your main automations view: every
-automation across projects, search and project filter, **New automation**
-(drops you into a seeded thread like the builtin page; the per-group `+`
-also tells the agent which group to file it in), and a link to the builtin
-template browser. Drag rows between groups or pick a group per row. Group
-headers pause, resume or run every member at once. Clicking a row opens the
-builtin detail/edit page.
+# Autopilots
 
-The plugin stores only group metadata and membership in its own SQLite
-database. Automations themselves stay in the builtin `automations` plugin and
-are read/controlled through its RPC, so the builtin Automations page remains
-the place to create and edit them.
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](package.json)
+[![BB](https://img.shields.io/badge/bb-0.43%2B-blue)](https://getbb.app)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Clicking a row opens the plugin's own detail page: health strip (success
-rate, failed/skipped counts, failure streak with the last error, average
-duration), the run history with per-run error/output, and the full agent
-transcript inline (`ThreadChat`) for agent runs. A **Run in background**
-toggle moves an agent automation onto one dedicated hidden thread so runs
-stop creating sidebar threads.
+Organize scheduled work into named folders. See what belongs together, control a whole group, and inspect a run when something needs attention.
 
-## CLI
+[Quick start](#quick-start) · [Install](#install) · [Requirements](#requirements) · [All plugins](../../README.md)
 
+![Autopilots in BB](../../marketplace/screenshots/automation-groups/overview.png)
+
+*Screenshots use illustrative schedules and run records in an isolated demo. They are not live automations.*
+
+## What you can do
+
+| | |
+| --- | --- |
+| **Work in groups** | Create colored folders, search across projects, and move automations between groups. |
+| **Control the whole group** | Pause, resume or run group members together. Keep each automation’s schedule in BB Automations. |
+| **Understand each run** | Open execution history, errors and outputs. Agent runs can show their conversation in the detail view. |
+
+## Quick start
+
+1. Open **Automation groups** in the sidebar.
+2. Create a folder such as Quality checks or Research.
+3. Assign existing automations by dragging their rows or choosing a group.
+4. Use group controls to pause, resume or run its members.
+5. Open a row to inspect that automation’s recent runs.
+
+### Inspect outcomes and run details without losing the automation’s context.
+
+![Automation detail view with illustrative run history](../../marketplace/screenshots/automation-groups/history.png)
+
+## Install
+
+From a local checkout, install this package:
+
+```sh
+bb plugin install ./plugins/automation-groups
 ```
-bb automation-group list [--json]
-bb automation-group create <name> [--color <color>]
-bb automation-group rename <group> <new name>
-bb automation-group color <group> <color>
-bb automation-group delete <group>
-bb automation-group assign <automationId> <group>
-bb automation-group unassign <automationId>
-bb automation-group pause|resume|run <group>
-bb automation-group runs <automationId> [--limit <n>] [--json]
-bb automation-group background <automationId> on|off
+
+<details>
+<summary>Install a versioned release</summary>
+
+```sh
+bb plugin install 'git:https://github.com/dmitriikapustin/bb-plugins-by-kapustin.git@^0.1.0' --plugin automation-groups --tag-prefix automation-groups/
 ```
 
-## Develop
+Compatible updates remain explicit:
 
+```sh
+bb plugin outdated
+bb plugin update automation-groups
 ```
-npm install --include=dev --ignore-scripts
-bb plugin install .
-bb plugin dev
+
+</details>
+
+## Requirements
+
+BB **0.43+** and Plugin SDK **0.4.87+**.
+
+Requires the bundled **Automations** plugin. Scheduled agent runs use your configured providers and their quotas; script runs use their configured execution environment.
+
+This plugin stores group metadata and membership. Automation definitions and schedules remain in BB Automations. A fresh installation creates no schedules.
+
+## From the terminal
+
+```sh
+bb automation-group list --json
+bb automation-group create "Quality checks" --color blue
+bb automation-group assign <automation-id> <group>
+bb automation-group runs <automation-id> --limit 10 --json
 ```
+
+<details>
+<summary>Behavior, data and limits</summary>
+
+The detail view reports success and failure counts, consecutive failures, the latest error and average duration over the loaded run window. For agent automations, background mode can reuse a dedicated hidden thread.
+
+Creating a new automation opens the native authoring flow. Removing a group removes its organization metadata rather than deleting its automations. See the [command reference](skills/automation-groups/SKILL.md).
+
+</details>
+
+<details>
+<summary>Development</summary>
+
+From the repository root, using Node 22.19+ and the BB CLI:
+
+```sh
+node scripts/run.mjs deps automation-groups
+node scripts/run.mjs check automation-groups
+node scripts/run.mjs test automation-groups
+node scripts/run.mjs build automation-groups
+```
+
+The test command reports when a package has no declared test suite. To reload a development installation, first confirm that `bb plugin source automation-groups` points to the copy you edited, then run `bb plugin reload automation-groups`.
+
+</details>
+
+---
+
+[All plugins](../../README.md) · [MIT](LICENSE) · **Dmitrii Kapustin**

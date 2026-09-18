@@ -1,8 +1,25 @@
 {
   "presets": {
-    "essentials": ["my-tasks", "goals", "usage-limits"],
-    "agents": ["agent-roles", "role-picker"],
-    "operations": ["automation-groups", "uptime"]
+    "essentials": [
+      "my-tasks",
+      "goals",
+      "usage-limits",
+      "fast-archive",
+      "usage-bar",
+      "sidebar-subtitles",
+      "fast-split",
+      "lock-area"
+    ],
+    "agents": [
+      "agent-roles",
+      "role-picker",
+      "visual-workflows",
+      "jev-bb"
+    ],
+    "operations": [
+      "automation-groups",
+      "uptime"
+    ]
   },
-  "requires": { "role-picker": ["agent-roles"] }
+  "requires": {}
 }

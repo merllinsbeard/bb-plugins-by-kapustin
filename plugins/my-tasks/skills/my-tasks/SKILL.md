@@ -1,22 +1,23 @@
 ---
 name: my-tasks
-description: Работа с личным чек-листом «Мои задачи»: прочитать задачу и предложить шаги, которые пользователь выберет сам. Использовать для запросов о плагине «Мои задачи» или при наличии ID его задачи.
+description: Work with the Apple Style Tasks personal checklist: read a task and suggest steps for the user to choose. Use when the user asks about Apple Style Tasks or provides one of its task IDs.
 ---
 
-# Мои задачи
+# Apple Style Tasks
 
-Это личный список пользователя. Не отмечайте личные задачи выполненными и не создавайте BB-треды для действий этого плагина.
+This is the user's personal list. Do not mark personal tasks complete or create BB threads for this plugin's actions.
 
-Интерфейс: `/plugins/my-tasks/checklist`. Задача открывается в модальном окне по центру. Все задачи без сроков. Разделы с иконками создаются через кнопку «Разделы»; название и иконку можно изменить. Раздел выбирается в окне задачи. Удаление раздела переносит его задачи в «Без раздела». Корзина позволяет восстановление.
+Open `/plugins/my-tasks/checklist`. Tasks open in a centered dialog and have no due dates. Use Sections to create or rename sections and choose their icons. Choose a task's section inside its dialog. Deleting a section moves its tasks to the Inbox. Trash supports restoration.
 
-Развитие идеи, декомпозиция и помощь запускаются в фоне через ephemeral Codex exec, модель `gpt-6-astra`, reasoning effort `low`. Новые BB-треды не создаются. Фоновая работа продолжается после закрытия окна; результат, предложения, ошибка и остановка находятся внутри задачи. Помощь доступна отдельно для каждого шага. Предложения подзадачи после выбора пользователя добавляются дочерними шагами. Не перенаправляйте запрос на подзадачу на всю родительскую задачу.
+Explore the idea, Break into steps, and Help with this run through background ephemeral Codex exec using `gpt-6-astra` with low reasoning effort. They create no BB threads. Work continues after the dialog closes; results, suggestions, errors and Stop remain attached to the task. Assistance is also available for an individual step. Accepted suggestions for a subtask become its child steps. Never redirect a request about one subtask to the whole parent task.
 
-Фоновая помощь готовит текстовый результат и может исследовать данные доступными инструментами; запуск ограничен read-only, внешние изменения не выполняются. Если для результата не хватает данных, вопрос показывается в ответе; пользователь уточняет запрос и запускает помощь снова. Прерванные при перезапуске активные работы показывают ошибку и не повторяются автоматически. Очередь сохраняется. Требуется доступный Codex с авторизацией на подключённой машине.
+Assistance returns text and may research available data with tools. Execution is read-only and makes no external changes. When information is missing, the result asks a question; the user can clarify and run assistance again. Work interrupted by a restart shows an error and does not retry automatically. Queued work persists. An authenticated Codex CLI must be available on a connected host.
 
-CLI:
-- `bb my-tasks list` — последние 100 задач, JSON с ID, названием, sectionId и выполнением.
-- `bb my-tasks get <id>` — контекст, шаги, предложения и фоновые результаты.
-- `bb my-tasks add <title>` — добавить задачу в «Без раздела», только по просьбе пользователя.
-- `bb my-tasks propose <id> '<JSON-array-of-strings>'` — предложить от 1 до 50 корневых шагов, до 500 символов каждый. Для внешнего агента; встроенный помощник возвращает структурированный результат напрямую. Корневые предложения заменяются, предложения подзадач сохраняются.
+## CLI
 
-Экранируйте аргументы shell. Для произвольного текста используйте массив аргументов subprocess без shell=True. Плагин хранит данные в SQLite. Старые ранее созданные разговоры сохранены как ссылки; новые действия их не создают.
+- `bb my-tasks list` returns the latest 100 tasks as JSON, including ID, title, sectionId and completion.
+- `bb my-tasks get <id>` reads context, steps, suggestions and background results.
+- `bb my-tasks add <title>` adds a task to the Inbox; use only when the user asks.
+- `bb my-tasks propose <id> '<JSON-array-of-strings>'` suggests 1–50 root steps of up to 500 characters each. Root suggestions are replaced; subtask suggestions remain. The built-in assistant returns structured results directly.
+
+Quote shell arguments. For arbitrary text, use a subprocess argument array without shell=True. Data is stored in the plugin's SQLite database. Earlier linked conversations remain as references; new assistant actions create none.
