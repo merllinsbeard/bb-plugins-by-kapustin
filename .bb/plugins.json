@@ -40,10 +40,6 @@
       "source": "./plugins/visual-workflows"
     },
     {
-      "name": "jev-bb",
-      "source": "./plugins/jev-bb"
-    },
-    {
       "name": "usage-bar",
       "source": "./plugins/usage-bar"
     },

@@ -13,8 +13,7 @@
     "agents": [
       "agent-roles",
       "role-picker",
-      "visual-workflows",
-      "jev-bb"
+      "visual-workflows"
     ],
     "operations": [
       "automation-groups",
