@@ -1,0 +1,31 @@
+{
+  "id": "my-tasks",
+  "displayName": "My Tasks",
+  "description": "Plan personal work with sections, nested steps and optional agent assistance. Review suggestions before accepting them. Assistance requires an authenticated Codex CLI and uses provider quota.",
+  "icon": {
+    "url": "./icons/my-tasks-930ea7f6.svg"
+  },
+  "tags": [
+    "checklist",
+    "planning",
+    "subtasks"
+  ],
+  "author": {
+    "name": "Dmitrii Kapustin",
+    "github": "dmitriikapustin",
+    "url": "https://github.com/dmitriikapustin"
+  },
+  "category": "tasks-and-workflows",
+  "source": {
+    "git": {
+      "url": "https://github.com/dmitriikapustin/bb-plugins-by-kapustin.git",
+      "subdir": "plugins/my-tasks",
+      "range": "^0.3.0",
+      "tagPrefix": "my-tasks/"
+    }
+  },
+  "overview": "./overview/my-tasks.md",
+  "screenshots": [
+    "./screenshots/my-tasks/overview.png"
+  ]
+}

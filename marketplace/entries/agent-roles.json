@@ -1,0 +1,31 @@
+{
+  "id": "agent-roles",
+  "displayName": "Agent Roles",
+  "description": "Create specialist agents and connect them into visual workflows. Run independent steps in parallel and inspect their results. Uses your configured providers and quotas; optional file synchronization is opt-in.",
+  "icon": {
+    "url": "./icons/agent-roles-f589abe1.svg"
+  },
+  "tags": [
+    "specialists",
+    "workflow-editor",
+    "orchestration"
+  ],
+  "author": {
+    "name": "Dmitrii Kapustin",
+    "github": "dmitriikapustin",
+    "url": "https://github.com/dmitriikapustin"
+  },
+  "category": "agents-and-providers",
+  "source": {
+    "git": {
+      "url": "https://github.com/dmitriikapustin/bb-plugins-by-kapustin.git",
+      "subdir": "plugins/agent-roles",
+      "range": "^0.1.0",
+      "tagPrefix": "agent-roles/"
+    }
+  },
+  "overview": "./overview/agent-roles.md",
+  "screenshots": [
+    "./screenshots/agent-roles/overview.png"
+  ]
+}

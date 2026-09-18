@@ -1,0 +1,41 @@
+name: Plugin checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    outputs:
+      plugins: ${{ steps.matrix.outputs.plugins }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+      - run: npm run catalog:check
+      - id: matrix
+        run: node -e 'const fs=require("fs");const c=JSON.parse(fs.readFileSync(".bb/plugins.json"));fs.appendFileSync(process.env.GITHUB_OUTPUT,"plugins="+JSON.stringify(c.plugins.map(p=>p.name))+"\n")'
+  plugin:
+    needs: catalog
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: ${{ fromJSON(needs.catalog.outputs.plugins) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+          cache-dependency-path: plugins/${{ matrix.plugin }}/package-lock.json
+      - name: Install BB build CLI
+        run: npm install --global bb-app@0.43.1 --no-audit --no-fund
+      - run: node scripts/run.mjs deps '${{ matrix.plugin }}'
+      - run: node scripts/run.mjs check '${{ matrix.plugin }}'
+      - run: node scripts/run.mjs test '${{ matrix.plugin }}'
+      - run: node scripts/run.mjs build '${{ matrix.plugin }}'

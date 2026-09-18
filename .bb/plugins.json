@@ -1,0 +1,35 @@
+{
+  "$schema": "https://getbb.app/schemas/plugins.schema.json",
+  "schemaVersion": 1,
+  "name": "bb-plugins-by-kapustin",
+  "plugins": [
+    {
+      "name": "agent-roles",
+      "source": "./plugins/agent-roles"
+    },
+    {
+      "name": "automation-groups",
+      "source": "./plugins/automation-groups"
+    },
+    {
+      "name": "goals",
+      "source": "./plugins/goals"
+    },
+    {
+      "name": "my-tasks",
+      "source": "./plugins/my-tasks"
+    },
+    {
+      "name": "role-picker",
+      "source": "./plugins/role-picker"
+    },
+    {
+      "name": "uptime",
+      "source": "./plugins/uptime"
+    },
+    {
+      "name": "usage-limits",
+      "source": "./plugins/usage-limits"
+    }
+  ]
+}

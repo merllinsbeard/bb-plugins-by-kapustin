@@ -1,0 +1,15 @@
+{
+  "name": "bb-plugins-by-kapustin",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "catalog:check": "node scripts/catalog.mjs",
+    "deps": "node scripts/run.mjs deps",
+    "check": "node scripts/run.mjs check",
+    "test": "node scripts/run.mjs test",
+    "build": "node scripts/run.mjs build",
+    "verify": "npm run catalog:check && npm run check && npm test && npm run build",
+    "pack:plan": "node scripts/install-pack.mjs all"
+  }
+}

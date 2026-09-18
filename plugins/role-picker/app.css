@@ -1,0 +1,15 @@
+.role-picker { display: inline-flex; align-items: center; gap: 2px; }
+.role-picker .role-picker-trigger { height: 32px; min-width: 32px; max-width: 152px; padding: 0 7px; gap: 6px; border-radius: 999px; font-size: 12px; font-weight: 400; color: var(--muted-foreground); }
+.role-picker .role-picker-trigger[data-selected="true"] { color: var(--foreground); padding-inline: 8px 10px; }
+.role-picker-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role-picker-menu { z-index: 100; width: min(224px, calc(100vw - 24px)); padding: 5px; border: 1px solid var(--border); border-radius: 16px; background: var(--popover, var(--background)); color: var(--popover-foreground, var(--foreground)); box-shadow: 0 4px 20px #00000012; font-size: 13px; }
+.role-picker-heading { padding: 9px 10px 7px; font-size: 11px; color: var(--muted-foreground); font-weight: 500; }
+.role-picker-menu p { color: var(--muted-foreground); margin: 8px 10px; font-size: 12px; }
+.role-picker-list { max-height: min(300px, 50vh); overflow-y: auto; display: grid; gap: 2px; }
+.role-picker-list button { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; text-align: left; border-radius: 10px; padding: 8px 10px; cursor: pointer; font-weight: 400; transition: background 120ms ease; }
+.role-picker-list button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role-picker-list button svg { flex-shrink: 0; }
+.role-picker-list button:hover { background: var(--accent); }
+.role-picker-list button:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.role-picker-note { margin: 5px 5px 0; padding: 9px 5px 6px; border-top: 1px solid var(--border); font-size: 10px; color: var(--muted-foreground); }
+@media (prefers-reduced-motion: reduce) { .role-picker-list button { transition: none; } }

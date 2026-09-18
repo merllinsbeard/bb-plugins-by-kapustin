@@ -1,0 +1,8 @@
+{
+  "presets": {
+    "essentials": ["my-tasks", "goals", "usage-limits"],
+    "agents": ["agent-roles", "role-picker"],
+    "operations": ["automation-groups", "uptime"]
+  },
+  "requires": { "role-picker": ["agent-roles"] }
+}

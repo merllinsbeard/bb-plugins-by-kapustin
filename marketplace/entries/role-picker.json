@@ -1,0 +1,31 @@
+{
+  "id": "role-picker",
+  "displayName": "Role Picker",
+  "description": "Choose a specialist in the composer and continue in the same conversation. Keep your model and permissions unchanged. Requires Agent Roles and a compatible BB message-submission interface.",
+  "icon": {
+    "url": "./icons/role-picker-4fd1a11a.svg"
+  },
+  "tags": [
+    "composer",
+    "specialists",
+    "role-selection"
+  ],
+  "author": {
+    "name": "Dmitrii Kapustin",
+    "github": "dmitriikapustin",
+    "url": "https://github.com/dmitriikapustin"
+  },
+  "category": "agents-and-providers",
+  "source": {
+    "git": {
+      "url": "https://github.com/dmitriikapustin/bb-plugins-by-kapustin.git",
+      "subdir": "plugins/role-picker",
+      "range": "^0.1.0",
+      "tagPrefix": "role-picker/"
+    }
+  },
+  "overview": "./overview/role-picker.md",
+  "screenshots": [
+    "./screenshots/role-picker/overview.png"
+  ]
+}
