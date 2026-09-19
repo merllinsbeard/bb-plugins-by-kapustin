@@ -1,2 +1,54 @@
-.sidebar-subtitles{padding:4px 0;font-size:13px;color:var(--sidebar-foreground)}.subtitle-toolbar{display:flex;justify-content:flex-end}.subtitle-toolbar button,.subtitle-edit{color:var(--muted-foreground);font-size:11px;padding:5px 8px;border:0;background:transparent}.subtitle-edit{width:100%;text-align:left}.sidebar-subtitles h2{font-size:11px;font-weight:600;color:var(--muted-foreground);padding:12px 8px 4px;letter-spacing:.025em}.subtitle-nav-item{width:100%;display:flex;align-items:center;gap:8px;padding:7px 8px;border:0;border-radius:7px;background:transparent;text-align:left}.subtitle-nav-item:hover,.subtitle-nav-item[aria-current=page]{background:var(--sidebar-accent)}.subtitle-nav-item>svg{width:16px;height:16px;flex-shrink:0}.subtitle-nav-item>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.subtitle-editor{padding:8px;border:1px solid var(--sidebar-border);border-radius:8px;margin:6px 0}.subtitle-editor input{box-sizing:border-box;width:100%;background:var(--sidebar);border:1px solid var(--sidebar-border);border-radius:5px;padding:6px;font-size:12px}.subtitle-editor small{font-size:10px;color:var(--muted-foreground)}.subtitle-editor>div{display:flex;gap:8px;margin-top:6px}.subtitle-editor button{font-size:11px;border:0;border-radius:4px;padding:4px 6px;background:var(--sidebar-accent)}.subtitle-editor p{font-size:11px;color:var(--destructive)}
-.sidebar-subtitles{min-height:0;max-height:60vh;overflow:auto;flex-shrink:1}.subtitle-row{display:flex;align-items:center;gap:2px}.subtitle-row>.subtitle-nav-item{flex:1;min-width:0}.subtitle-handle{cursor:grab;touch-action:none;border:0;background:transparent;color:var(--muted-foreground);padding:8px}.subtitle-controls{display:flex;align-items:center;gap:6px;padding:2px 8px 10px}.subtitle-controls>button,.subtitle-show{border:0;border-radius:4px;background:var(--sidebar-accent);padding:3px 7px}.subtitle-controls label{display:flex;align-items:center;gap:5px;font-size:11px}.subtitle-help{font-size:11px;color:var(--muted-foreground);padding:4px 8px}.subtitle-hidden>.subtitle-row{opacity:.65}.subtitle-more>summary{cursor:pointer;padding:8px}.subtitle-options{position:relative}.subtitle-options>summary{cursor:pointer;list-style:none;padding:4px 8px}.subtitle-options>summary::-webkit-details-marker{display:none}.subtitle-options>div{position:absolute;right:0;z-index:30;min-width:130px;background:var(--sidebar);border:1px solid var(--sidebar-border);border-radius:7px;padding:4px;box-shadow:0 4px 12px color-mix(in oklab,var(--foreground) 15%,transparent)}.subtitle-options button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:7px;border-radius:4px}.subtitle-options button:hover{background:var(--sidebar-accent)}.sidebar-subtitles button:disabled{opacity:.45;cursor:not-allowed}.sidebar-subtitles :focus-visible{outline:2px solid var(--ring);outline-offset:1px}
+.sidebar-subtitles{box-sizing:border-box;min-height:0;max-height:70vh;overflow:auto;flex-shrink:1;padding:8px;font-size:12px;line-height:16px;color:var(--sidebar-foreground);scrollbar-width:thin;scrollbar-color:transparent transparent}
+.sidebar-subtitles:hover{scrollbar-color:var(--sidebar-border) transparent}
+.subtitle-section+.subtitle-section{margin-top:2px}
+.sidebar-subtitles h2{margin:0;padding:12px 8px 4px;font-size:11px;line-height:16px;font-weight:500;color:var(--muted-foreground)}
+.sidebar-subtitles>.subtitle-section:first-child h2{padding-top:0}
+.subtitle-row{position:relative;display:flex;align-items:center;min-width:0;border-radius:6px}
+.subtitle-row:hover,.subtitle-row:focus-within{background:var(--sidebar-accent)}
+.subtitle-nav-item{box-sizing:border-box;min-width:0;flex:1;display:flex;align-items:center;gap:8px;height:var(--bb-sidebar-row-height,28px);padding:0 8px;border:0;border-radius:6px;background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.subtitle-nav-item[aria-current=page]{background:var(--sidebar-accent);color:var(--sidebar-accent-foreground,var(--sidebar-foreground))}
+.subtitle-nav-item>svg{width:16px;height:16px;flex-shrink:0}
+.subtitle-nav-item>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subtitle-row>.subtitle-nav-item{padding-right:30px}
+.subtitle-icon-button{display:flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--muted-foreground);cursor:pointer}
+.subtitle-icon-button svg{width:14px;height:14px}
+.subtitle-icon-button:hover,.subtitle-icon-button[data-state=open]{background:var(--sidebar-accent);color:var(--sidebar-foreground)}
+.subtitle-options{position:absolute;right:1px;opacity:0}
+.subtitle-row:hover>.subtitle-options,.subtitle-row:focus-within>.subtitle-options,.subtitle-options[data-state=open],[data-editing] .subtitle-options{opacity:1}
+.subtitle-footer{display:flex;align-items:center;gap:2px;margin-top:2px}
+.subtitle-more{color:var(--muted-foreground)}
+.subtitle-more:hover{background:var(--sidebar-accent);color:var(--sidebar-foreground)}
+.subtitle-customize{margin-left:auto}
+.subtitle-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px 8px;color:var(--muted-foreground);font-size:11px}
+.subtitle-toolbar button,.subtitle-editor button{border:0;border-radius:5px;padding:4px 8px;background:var(--sidebar-accent);color:var(--sidebar-foreground);font:inherit;cursor:pointer}
+[data-editing] .subtitle-row>.subtitle-nav-item{padding-left:4px;padding-right:4px}
+[data-editing] .subtitle-options{position:static;flex:none}
+.subtitle-handle{cursor:grab;touch-action:none;color:var(--muted-foreground)}
+.subtitle-handle:active{cursor:grabbing}
+[data-hidden] .subtitle-nav-item{opacity:.45}
+[data-drop-target]>.subtitle-row{box-shadow:0 -2px var(--ring)}
+.subtitle-edit{display:flex;align-items:center;gap:6px;width:100%;border:0;padding:0;background:transparent;text-align:left;color:inherit;font:inherit;cursor:pointer}
+.subtitle-edit svg{width:12px;height:12px;opacity:0}
+.subtitle-edit:hover svg,.subtitle-edit:focus-visible svg{opacity:1}
+.subtitle-editor{padding:8px;border:1px solid var(--sidebar-border);border-radius:6px;margin:6px 0;background:var(--sidebar)}
+.subtitle-editor label{font-size:11px;color:var(--muted-foreground)}
+.subtitle-editor input{box-sizing:border-box;width:100%;margin:5px 0 8px;background:var(--background);color:var(--foreground);border:1px solid var(--input);border-radius:5px;padding:6px 8px;font:inherit}
+.subtitle-editor>div{display:flex;gap:4px}
+.subtitle-editor .subtitle-delete{margin-left:auto;background:transparent;color:var(--muted-foreground)}
+.subtitle-error,.subtitle-editor p{font-size:11px;color:var(--destructive)}
+.subtitle-menu,.subtitle-popover{box-sizing:border-box;z-index:60;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--popover);color:var(--popover-foreground);box-shadow:0 4px 12px #0002;font-size:12px;line-height:16px;max-height:var(--radix-popover-content-available-height,70vh);overflow:auto}
+.subtitle-menu{min-width:184px;max-height:var(--radix-dropdown-menu-content-available-height,70vh)}
+.subtitle-menu [role=menuitem]{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:4px;outline:none;cursor:default}
+.subtitle-menu [role=menuitem][data-highlighted]{background:var(--accent);color:var(--accent-foreground)}
+.subtitle-menu [role=menuitem][data-disabled]{opacity:.4;pointer-events:none}
+.subtitle-menu svg{width:14px;height:14px;color:var(--muted-foreground)}
+.subtitle-menu [role=separator]{height:1px;margin:4px 0;background:var(--border)}
+.subtitle-popover{width:240px;max-width:calc(100vw - 24px)}
+.subtitle-popover-title{padding:6px 8px;color:var(--muted-foreground);font-size:11px}
+.subtitle-popover .subtitle-row>.subtitle-nav-item{padding-right:8px}
+.sidebar-subtitles button:disabled,.subtitle-popover button:disabled{opacity:.45;cursor:not-allowed}
+.sidebar-subtitles :focus-visible,.subtitle-popover :focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
+[data-compact] .subtitle-nav-item{min-height:36px}
+[data-compact] .subtitle-icon-button{width:32px;height:32px}
+[data-compact] .subtitle-options{opacity:1}
+@media (hover:none){.subtitle-options{opacity:1}.subtitle-icon-button{min-width:32px;min-height:32px}}
