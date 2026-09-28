@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { usePortalScopeProps } from "@/lib/portal-scope";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -355,6 +356,7 @@ function RoleDirective({ attributes }: { attributes: Readonly<Record<string, str
 function ThreadRoleBadge({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
   const rpc = useRpc<typeof rpcContract>();
   const [info, setInfo] = useState<Awaited<ReturnType<typeof rpc.call<"thread_role">>> | undefined>(undefined);
+  const scopeProps = usePortalScopeProps();
   useEffect(() => {
     rpc.call("thread_role", { threadId }).then(setInfo).catch(() => setInfo(null));
   }, [rpc, threadId]);
@@ -378,6 +380,7 @@ function ThreadRoleBadge({ threadId, isCompactViewport }: PluginThreadHeaderActi
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
+          {...scopeProps}
           align="end"
           sideOffset={6}
           collisionPadding={12}
