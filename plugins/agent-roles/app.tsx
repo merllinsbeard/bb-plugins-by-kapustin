@@ -369,13 +369,18 @@ function ThreadRoleBadge({ threadId, isCompactViewport }: PluginThreadHeaderActi
           aria-label={`Agent role ${info.roleName}`}
           title={`${info.roleName} · ${info.roleSlug}`}
           className={cn(
-            "inline-flex h-7 min-w-0 shrink items-center gap-1.5 whitespace-nowrap rounded-md border border-border/70 bg-muted/30 px-2 text-xs transition-colors hover:bg-accent hover:text-foreground",
-            isCompactViewport ? "max-w-[8rem]" : "max-w-[16rem]",
+            "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-border/70 bg-muted/30 text-xs transition-colors hover:bg-accent hover:text-foreground",
+            // On a phone the thread title needs the room; the dot alone marks the role.
+            isCompactViewport ? "w-7 shrink-0 justify-center" : "min-w-0 max-w-[16rem] shrink px-2",
           )}
         >
           <span className={cn("size-2 shrink-0 rounded-full", COLOR_DOT[info.color])} />
-          <span className="truncate font-medium">{info.roleName}</span>
-          {info.taskKey && !isCompactViewport ? <span className="shrink-0 text-[11px] text-muted-foreground">{info.taskKey}</span> : null}
+          {isCompactViewport ? null : (
+            <>
+              <span className="truncate font-medium">{info.roleName}</span>
+              {info.taskKey ? <span className="shrink-0 text-[11px] text-muted-foreground">{info.taskKey}</span> : null}
+            </>
+          )}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
