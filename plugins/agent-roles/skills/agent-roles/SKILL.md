@@ -38,7 +38,8 @@ bb role sync [--status] [--json]               reconcile roles â†” agent files â
 
 `<role>` / `<team>` accept slug, id, or exact name. Inside a thread the
 project and environment are taken from the current thread; the spawned
-threads share your workspace.
+threads share your workspace. With `--project <id>` of another project, the
+thread starts in that project's default environment.
 
 ## How to delegate
 

@@ -1082,7 +1082,11 @@ export default async function plugin(bb: BbPluginApi) {
     }
   }
 
-  /** Resolve project + environment for a CLI call from the invoking thread. */
+  /**
+   * Resolve project + environment for a CLI call from the invoking thread.
+   * The thread's environment is reused only within its own project; for
+   * another project (--project) bb picks that project's default environment.
+   */
   async function contextFor(ctx: { threadId?: string; projectId?: string }, explicitProject?: string) {
     let projectId = explicitProject ?? ctx.projectId ?? null;
     let environmentId: string | null = null;
@@ -1090,7 +1094,7 @@ export default async function plugin(bb: BbPluginApi) {
       try {
         const t = await bb.sdk.threads.get({ threadId: ctx.threadId });
         projectId ??= t.projectId;
-        environmentId = t.environmentId ?? null;
+        if (t.projectId === projectId) environmentId = t.environmentId ?? null;
       } catch { /* thread gone — fall through */ }
     }
     if (!projectId) throw new Error("No project: pass --project <id> or run inside a thread.");

@@ -7,6 +7,7 @@
 //   /plugins/agent-roles/roles/teams      teams (visual DAG constructor)
 //   /plugins/agent-roles/roles/runs       runs
 //   /plugins/agent-roles/roles/runs/<id>  one run
+import * as Popover from "@radix-ui/react-popover";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import {
@@ -18,6 +19,7 @@ import {
   useBbNavigate,
   useRealtime,
   useRpc,
+  type PluginThreadHeaderActionProps,
 } from "@get-bb/plugin-sdk/app";
 import { toast } from "sonner";
 import type { Role, RoleTask, Team, TeamRun, TeamRunWithSteps, rpcContract } from "./server";
@@ -312,23 +314,27 @@ function SpawnBox({ role, onClose, onFiled }: { role: Role; onClose: () => void;
   );
 }
 
-/** The role card shown in thread headers and via `::agent-role{slug="…"}` in messages. */
-function RoleCard({ role, taskKey, compact }: { role: Pick<Role, "name" | "slug" | "description" | "color"> & { instructions?: string }; taskKey?: string | null; compact?: boolean }) {
+/** The role card shown via `::agent-role{slug="…"}` in messages. */
+function RoleCard({ role, taskKey }: { role: Pick<Role, "name" | "slug" | "description" | "color"> & { instructions?: string }; taskKey?: string | null }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className={cn("inline-flex max-w-full flex-col rounded-lg border border-border/70 bg-muted/30", compact ? "px-2 py-1" : "px-3 py-2")}>
+    <div className="inline-flex max-w-full flex-col rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
       <button type="button" className="flex items-center gap-2 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={`Agent role ${role.name}`}>
         <span className={cn("size-2.5 shrink-0 rounded-full", COLOR_DOT[role.color])} />
-        <span className={cn("font-medium", compact ? "text-xs" : "text-sm")}>{role.name}</span>
+        <span className="text-sm font-medium">{role.name}</span>
         <code className="text-[11px] text-muted-foreground/70">{role.slug}</code>
         {taskKey ? <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{taskKey}</span> : null}
       </button>
-      {open ? (
-        <div className="mt-2 max-w-[560px] text-xs leading-relaxed text-muted-foreground">
-          {role.description ? <p>{role.description}</p> : null}
-          {role.instructions ? <pre className="mt-2 whitespace-pre-wrap font-sans text-[11px]">{role.instructions}</pre> : null}
-        </div>
-      ) : null}
+      {open ? <div className="max-w-[560px]"><RoleDetails description={role.description} instructions={role.instructions} /></div> : null}
+    </div>
+  );
+}
+
+function RoleDetails({ description, instructions }: { description: string; instructions?: string }) {
+  return (
+    <div className="mt-2 text-xs leading-relaxed text-muted-foreground">
+      {description ? <p>{description}</p> : null}
+      {instructions ? <pre className="mt-2 whitespace-pre-wrap font-sans text-[11px]">{instructions}</pre> : null}
     </div>
   );
 }
@@ -345,14 +351,49 @@ function RoleDirective({ attributes }: { attributes: Readonly<Record<string, str
   return <RoleCard role={role} taskKey={attributes.task ?? null} />;
 }
 
-function ThreadRoleBadge({ threadId, isCompactViewport }: { threadId: string; projectId: string; isCompactViewport: boolean }) {
+/** The thread header row holds 28px controls, so the role is one line there; details open in a portalled popover. */
+function ThreadRoleBadge({ threadId, isCompactViewport }: PluginThreadHeaderActionProps) {
   const rpc = useRpc<typeof rpcContract>();
   const [info, setInfo] = useState<Awaited<ReturnType<typeof rpc.call<"thread_role">>> | undefined>(undefined);
   useEffect(() => {
     rpc.call("thread_role", { threadId }).then(setInfo).catch(() => setInfo(null));
   }, [rpc, threadId]);
   if (!info) return null;
-  return <RoleCard role={{ name: info.roleName, slug: info.roleSlug, description: info.description, color: info.color, instructions: info.instructions }} taskKey={info.taskKey} compact={isCompactViewport} />;
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          aria-label={`Agent role ${info.roleName}`}
+          title={`${info.roleName} · ${info.roleSlug}`}
+          className={cn(
+            "inline-flex h-7 min-w-0 shrink items-center gap-1.5 whitespace-nowrap rounded-md border border-border/70 bg-muted/30 px-2 text-xs transition-colors hover:bg-accent hover:text-foreground",
+            isCompactViewport ? "max-w-[8rem]" : "max-w-[16rem]",
+          )}
+        >
+          <span className={cn("size-2 shrink-0 rounded-full", COLOR_DOT[info.color])} />
+          <span className="truncate font-medium">{info.roleName}</span>
+          {info.taskKey && !isCompactViewport ? <span className="shrink-0 text-[11px] text-muted-foreground">{info.taskKey}</span> : null}
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="end"
+          sideOffset={6}
+          collisionPadding={12}
+          className="z-50 max-h-[min(70vh,32rem)] w-96 max-w-[calc(100vw-24px)] overflow-y-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn("size-2.5 shrink-0 rounded-full", COLOR_DOT[info.color])} />
+            <span className="text-sm font-medium">{info.roleName}</span>
+            <code className="text-[11px] text-muted-foreground/70">{info.roleSlug}</code>
+            {info.taskKey ? <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{info.taskKey}</span> : null}
+          </div>
+          <RoleDetails description={info.description} instructions={info.instructions} />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
 }
 
 function RoleJobs({ roles, refreshKey }: { roles: Role[]; refreshKey: number }) {
